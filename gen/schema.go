@@ -3,235 +3,288 @@ package schematest
 import(
 	"bytes"
 	"encoding/binary"
-	"6enten/garlicphone/optional"
 	"errors"
 	"fmt"
 )
 
-// Type definitions
-
-type Player struct { 
-	 Id optional.Optional[uint32]
-	 Name optional.Optional[string]
+type Foo struct { 
+	 Bar *int32
 }
-
-func (it Player) ToBytes() []byte {
-	var data bytes.Buffer
-
-	appendUint16(&data, 49920)
-	appendUint32(&data, 0)
-
-	if it.Id.Exists() {
-		appendUint16(&data, 10)
-		appendUint32(&data, it.Id.MustGet())
+func (Foo) TypeID() uint16 { return uint16(32471) }
+func (it Foo) toBytes(data *bytes.Buffer) {
+	serializeUint16(32471, data)
+	startLenPos := data.Len()
+	serializeUint32(0, data)
+	if it.Bar != nil {
+		serializeUint16(0, data)
+		serializeInt32(*it.Bar, data)
 	}
-	if it.Name.Exists() {
-		appendUint16(&data, 11)
-		appendString(&data, it.Name.MustGet())
-	}
-
-	binary.BigEndian.PutUint32(data.Bytes()[idSize:], uint32(len(data.Bytes())-(idSize+lenSize)))
-	return data.Bytes()
+	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
 }
-
-func (it *Player) FromBytes(bytes []byte) (int, error) {
-	return parse(it, bytes)
-}
-
-func (it *Player) parseFields(data []byte, fieldIndex uint16, offset int) (int, error) {
+func (it *Foo) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
 	switch fieldIndex {
-	case 10: return readUint32(data, offset, &it.Id)
-	case 11: return readString(data, offset, &it.Name)
+	case 0: val, len, err := deserializeInt32(data, offset); it.Bar = &val; return len, err
 	}
 	return 0, UnknownFieldError
 }
 
+type Player struct { 
+	 Inventory *[]Foo
+	 Idk *Foo
+	 Id *uint32
+	 Name *string
+}
+func (Player) TypeID() uint16 { return uint16(49920) }
+func (it Player) toBytes(data *bytes.Buffer) {
+	serializeUint16(49920, data)
+	startLenPos := data.Len()
+	serializeUint32(0, data)
+	if it.Inventory != nil {
+		serializeUint16(0, data)
+		newListSerializer(foo)(*it.Inventory, data)
+	}
+	if it.Idk != nil {
+		serializeUint16(1, data)
+		serializeStruct(*it.Idk, data)
+	}
+	if it.Id != nil {
+		serializeUint16(2, data)
+		serializeUint32(*it.Id, data)
+	}
+	if it.Name != nil {
+		serializeUint16(3, data)
+		serializeString(*it.Name, data)
+	}
+	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
+}
+func (it *Player) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
+	switch fieldIndex {
+	case 0: val, len, err := deserializefoo(data, offset); it.Inventory = &val; return len, err
+	case 1: val, len, err := deserializeStruct[Foo](data, offset); it.Idk = &val; return len, err
+	case 2: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
+	case 3: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
+	}
+	return 0, UnknownFieldError
+}
 
-// Utilities
+func Deserialize[K any, KT interface {*K; Serializable}](b []byte, out KT) error {
+	if len(b) < idSize+lenSize { return fmt.Errorf("data too short to contain message header") }
+	typeID := uint16(binary.BigEndian.Uint16(b[0:idSize]))
+	if out.TypeID() != typeID { return fmt.Errorf("type ID mismatch: expected %d, got %d", out.TypeID(), typeID) }
+	switch v := any(out).(type) {
+	case *Foo: _, err := parse(v.fromBytes, b); return err
+	case *Player: _, err := parse(v.fromBytes, b); return err
+	default: return fmt.Errorf("unsupported type for deserialization")
+	}
+}
 
+func deserializeStruct[K Serializable](data []byte, offset int) (K, int, error) {
+	var val K
+	slice := data[offset:]
+	switch v := any(val).(type) {
+	case Foo:
+		i, err := parse(v.fromBytes, slice)
+		return any(v).(K), i, err
+	case Player:
+		i, err := parse(v.fromBytes, slice)
+		return any(v).(K), i, err
+	default:
+		return val, 0, fmt.Errorf("unsupported struct type for deserialization")
+	}
+}
+
+type Serializable interface {
+	TypeID() uint16
+	toBytes(*bytes.Buffer)
+}
+
+func Serialize[K any, KT interface {
+	*K
+	Serializable
+}](value KT) ([]byte, error) {
+	buf := bytes.Buffer{}
+	value.toBytes(&buf)
+	return buf.Bytes(), nil
+}
+
+func Ptr[K any](v K) *K {
+	return &v
+}
+
+var UnknownFieldError = errors.New("unknown field index")
 
 const lenSize = 4
 const idSize = 2
 
-type Serializable interface {
-	FromBytes([]byte) (int, error)
-	ToBytes() []byte
-}
+type deserializer[K any] func(data []byte, offset int) (value K, len int, err error)
 
-func readBool(data []byte, offset int, out **bool) (int, error) {
+type serializer[K any] func(value K, b *bytes.Buffer) int
+
+func deserializeBool(data []byte, offset int) (bool, int, error) {
 	slice := data[offset:]
 	if len(slice) < 1 {
-		return 0, fmt.Errorf("insufficient data for bool")
+		return false, 0, fmt.Errorf("insufficient data for bool")
 	}
 	val := slice[0] != 0
-	*out = &val
-	return 1, nil
+	return val, 1, nil
 }
 
-func appendBool(data *bytes.Buffer, value bool) int {
+func deserializeInt8(data []byte, offset int) (int8, int, error) {
+	slice := data[offset:]
+	if len(slice) < 1 {
+		return 0, 0, fmt.Errorf("insufficient data for int8")
+	}
+	val := int8(slice[0])
+	return val, 1, nil
+}
+
+func deserializeUint8(data []byte, offset int) (uint8, int, error) {
+	slice := data[offset:]
+	if len(slice) < 1 {
+		return 0, 0, fmt.Errorf("insufficient data for uint8")
+	}
+	val := uint8(slice[0])
+	return val, 1, nil
+}
+
+func deserializeInt16(data []byte, offset int) (int16, int, error) {
+	slice := data[offset:]
+	if len(slice) < 2 {
+		return 0, 0, fmt.Errorf("insufficient data for int16")
+	}
+	val := int16(slice[0])<<8 | int16(slice[1])
+	return val, 2, nil
+}
+
+func deserializeUint16(data []byte, offset int) (uint16, int, error) {
+	slice := data[offset:]
+	if len(slice) < 2 {
+		return 0, 0, fmt.Errorf("insufficient data for uint16")
+	}
+	val := uint16(slice[0])<<8 | uint16(slice[1])
+	return val, 2, nil
+}
+
+func deserializeInt32(data []byte, offset int) (int32, int, error) {
+	slice := data[offset:]
+	if len(slice) < 4 {
+		return 0, 0, fmt.Errorf("insufficient data for int32")
+	}
+	val := int32(slice[0])<<24 | int32(slice[1])<<16 | int32(slice[2])<<8 | int32(slice[3])
+	return val, 4, nil
+}
+
+func deserializeUint32(data []byte, offset int) (uint32, int, error) {
+	slice := data[offset:]
+	if len(slice) < 4 {
+		return 0, 0, fmt.Errorf("insufficient data for uint32")
+	}
+	val := uint32(slice[0])<<24 | uint32(slice[1])<<16 | uint32(slice[2])<<8 | uint32(slice[3])
+	return val, 4, nil
+}
+
+func deserializeString(data []byte, offset int) (string, int, error) {
+	slice := data[offset:]
+	if len(slice) < 4 {
+		return "", 0, fmt.Errorf("insufficient data for string length")
+	}
+	strLen := int(binary.BigEndian.Uint32(slice))
+	if strLen == 0 {
+		return "", 4, nil
+	}
+	if len(slice[4:]) < strLen {
+		return "", 0, fmt.Errorf("insufficient data for string content")
+	}
+	val := string(slice[4 : 4+strLen])
+	return val, 4 + strLen, nil
+}
+
+func newListDeserializer[K any](elemDeserializer deserializer[K]) deserializer[[]K] {
+	return func(data []byte, offset int) (value []K, l int, err error) {
+		slice := data[offset:]
+		if len(slice) < 4 {
+			return nil, 0, fmt.Errorf("insufficient data for list length")
+		}
+		listLen := int(binary.BigEndian.Uint32(slice))
+		i := 4
+		value = make([]K, 0)
+		for i < listLen+4 {
+			elem, n, err := elemDeserializer(data, offset+i)
+			if err != nil {
+				return nil, 0, err
+			}
+			value = append(value, elem)
+			i += n
+		}
+		return value, listLen + 4, nil
+	}
+}
+
+func serializeBool(value bool, b *bytes.Buffer) int {
 	var boolByte byte = 0
 	if value {
 		boolByte = 1
 	}
-	data.WriteByte(boolByte)
+	b.WriteByte(boolByte)
 	return 1
 }
 
-func readInt8(data []byte, offset int, out **int8) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 1 {
-		return 0, fmt.Errorf("insufficient data for int8")
-	}
-	val := int8(slice[0])
-	*out = &val
-	return 1, nil
-}
-
-func appendInt8(data *bytes.Buffer, value int8) int {
-	data.WriteByte(byte(value))
+func serializeInt8(value int8, b *bytes.Buffer) int {
+	b.WriteByte(byte(value))
 	return 1
 }
 
-func readUint8(data []byte, offset int, out **uint8) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 1 {
-		return 0, fmt.Errorf("insufficient data for uint8")
-	}
-	val := uint8(slice[0])
-	*out = &val
-	return 1, nil
-}
-
-func appendUint8(data *bytes.Buffer, value uint8) int {
-	data.WriteByte(byte(value))
+func serializeUint8(value uint8, b *bytes.Buffer) int {
+	b.WriteByte(byte(value))
 	return 1
 }
 
-func readInt16(data []byte, offset int, out **int16) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 2 {
-		return 0, fmt.Errorf("insufficient data for int16")
-	}
-	val := int16(binary.BigEndian.Uint16(slice))
-	*out = &val
-	return 2, nil
-}
-
-func appendInt16(data *bytes.Buffer, value int16) int {
-	binary.Write(data, binary.BigEndian, value)
+func serializeInt16(value int16, b *bytes.Buffer) int {
+	binary.Write(b, binary.BigEndian, value)
 	return 2
 }
 
-func readUint16(data []byte, offset int, out **uint16) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 2 {
-		return 0, fmt.Errorf("insufficient data for uint16")
-	}
-	val := uint16(binary.BigEndian.Uint16(slice))
-	*out = &val
-	return 2, nil
-}
-
-func appendUint16(data *bytes.Buffer, value uint16) int {
-	binary.Write(data, binary.BigEndian, value)
+func serializeUint16(value uint16, b *bytes.Buffer) int {
+	binary.Write(b, binary.BigEndian, value)
 	return 2
 }
 
-func readInt32(data []byte, offset int, out **int32) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 4 {
-		return 0, fmt.Errorf("insufficient data for int32")
-	}
-	val := int32(binary.BigEndian.Uint32(slice))
-	*out = &val
-	return 4, nil
-}
-
-func appendInt32(data *bytes.Buffer, value int32) int {
-	binary.Write(data, binary.BigEndian, value)
+func serializeInt32(value int32, b *bytes.Buffer) int {
+	binary.Write(b, binary.BigEndian, value)
 	return 4
 }
 
-func readUint32(data []byte, offset int, out **uint32) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 4 {
-		return 0, fmt.Errorf("insufficient data for uint32")
-	}
-	val := uint32(binary.BigEndian.Uint32(slice))
-	*out = &val
-	return 4, nil
-}
-
-func appendUint32(data *bytes.Buffer, value uint32) int {
-	binary.Write(data, binary.BigEndian, value)
+func serializeUint32(value uint32, b *bytes.Buffer) int {
+	binary.Write(b, binary.BigEndian, value)
 	return 4
 }
 
-func readString(data []byte, offset int, out **string) (int, error) {
-	slice := data[offset:]
-	if len(slice) < 4 {
-		return 0, fmt.Errorf("insufficient data for string length")
-	}
-	strLen := int(binary.BigEndian.Uint32(slice))
-	if strLen == 0 {
-		*out = new(string)
-		return 4, nil
-	}
-	if len(slice[4:]) < strLen {
-		return 0, fmt.Errorf("insufficient data for string content")
-	}
-	val := string(slice[4 : 4+strLen])
-	*out = &val
-	return 4 + strLen, nil
+func serializeString(value string, b *bytes.Buffer) int {
+	strLen := uint32(len(value))
+	binary.Write(b, binary.BigEndian, strLen)
+	b.WriteString(value)
+	return 4 + len(value)
 }
 
-func appendString(data *bytes.Buffer, str string) int {
-	binary.Write(data, binary.BigEndian, int32(len(str)))
-	data.Write([]byte(str))
-	return len(str) + 4
+func serializeStruct[K Serializable](value K, b *bytes.Buffer) int {
+	startLen := len(b.Bytes())
+	value.toBytes(b)
+	return len(b.Bytes()) - startLen
 }
 
-func appendList[T Serializable](list []T, data *bytes.Buffer) {
-	appendUint32(data, uint32(0))
-	i := len(data.Bytes())
-	for _, item := range list {
-		data.Write(item.ToBytes())
+func newListSerializer[K any](elemSerializer serializer[K]) serializer[[]K] {
+	return func(value []K, b *bytes.Buffer) int {
+		serializeUint32(0, b)
+		i := len(b.Bytes())
+		for _, item := range value {
+			elemSerializer(item, b)
+		}
+		binary.BigEndian.PutUint32(b.Bytes()[i-lenSize:], uint32(len(b.Bytes())-i))
+		return len(b.Bytes()) - i + lenSize
 	}
-	binary.BigEndian.PutUint32(data.Bytes()[i-lenSize:], uint32(len(data.Bytes())-i))
 }
 
-func appendPrimitiveList[T any](list []T, data *bytes.Buffer, serializer func(*bytes.Buffer, T) int) {
-	appendUint32(data, uint32(0))
-	i := len(data.Bytes())
-	for _, item := range list {
-		serializer(data, item)
-	}
-	binary.BigEndian.PutUint32(data.Bytes()[i-lenSize:], uint32(len(data.Bytes())-i))
-}
-
-func readStruct[K Serializable](data []byte, offset int, out K) (int, error) {
-	n, err := out.FromBytes(data[offset:])
-	if err != nil && !errors.Is(err, UnknownFieldError) {
-		return n, err
-	}
-	return n, nil
-}
-
-func readList[K any](data []byte, offset int, list *[]K, reader func([]byte, int, **K) (int, error)) (int, error) {
-	listLen := int(binary.BigEndian.Uint32(data[offset:]))
-	for i := offset + lenSize; i < offset+listLen; {
-		var val = new(K)
-		n, _ := reader(data, i, &val)
-		*list = append(*list, *val)
-		i += n
-	}
-	return listLen + lenSize, nil
-}
-
-func parse(s interface {
-	Serializable
-	parseFields([]byte, uint16, int) (int, error)
-}, bytes []byte) (int, error) {
+func parse(parser func(data []byte, fieldIndex uint16, offset int) (int, error), bytes []byte) (int, error) {
 	if len(bytes) < idSize+lenSize {
 		return 0, fmt.Errorf("data too short: need at least 6 bytes for id and length")
 	}
@@ -246,7 +299,7 @@ func parse(s interface {
 			return totalSize, err
 		}
 		i += 2
-		next, err := s.parseFields(bytes, fieldIndex, i)
+		next, err := parser(bytes, fieldIndex, i)
 		if err != nil {
 			if errors.Is(err, UnknownFieldError) {
 				return totalSize, nil

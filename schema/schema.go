@@ -6,30 +6,16 @@ import (
 	"fmt"
 )
 
-func Serialize[K any, KT interface {
-	*K
-	Serializable
-}](value KT) ([]byte, error) {
-	buf := bytes.Buffer{}
-	value.toBytes(&buf)
-	return buf.Bytes(), nil
-}
-
-func Deserialize[K any, KT interface {
-	*K
-	Serializable
-}](b []byte, out KT) error {
+func Deserialize[K any, KT interface {*K; Serializable}](b []byte, out KT) error {
 	if len(b) < idSize+lenSize {
 		return fmt.Errorf("data too short to contain message header")
 	}
-	typeID := int16(binary.BigEndian.Uint16(b[0:idSize]))
+	typeID := uint16(binary.BigEndian.Uint16(b[0:idSize]))
 	if out.TypeID() != typeID {
 		return fmt.Errorf("type ID mismatch: expected %d, got %d", out.TypeID(), typeID)
 	}
 	switch v := any(out).(type) {
-	case *MyMessage:
-		_, err := parse(v.fromBytes, b)
-		return err
+	case *MyMessage: _, err := parse(v.fromBytes, b); return err
 	case *MyStruct:
 		_, err := parse(v.fromBytes, b)
 		return err
@@ -61,11 +47,11 @@ type MyMessage struct {
 	SomeStruct  *MyStruct       // index 3
 	SomeList    *[]string       // index 4
 	SomeList2   *[]MyStruct     // index 5
-	SomeList3   *[][]string     // index 6 (not implemented)
-	SomeList4   *[][][]MyStruct // index 7 (not implemented)
+	SomeList3   *[][]string     // index 6
+	SomeList4   *[][][]MyStruct // index 7
 }
 
-func (MyMessage) TypeID() int16 { return 1 }
+func (MyMessage) TypeID() uint16 { return 1 }
 
 func (msg MyMessage) toBytes(data *bytes.Buffer) {
 
@@ -119,9 +105,7 @@ func (msg MyMessage) toBytes(data *bytes.Buffer) {
 func (msg *MyMessage) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
 	switch fieldIndex {
 	case 0:
-		val, len, err := deserializeUint32(data, offset)
-		msg.Id = &val
-		return len, err
+		val, len, err := deserializeUint32(data, offset); msg.Id = &val ;return len, err
 	case 1:
 		val, len, err := deserializeString(data, offset)
 		msg.Name = &val
@@ -159,7 +143,7 @@ type MyStruct struct {
 	Value *string // index 0
 }
 
-func (MyStruct) TypeID() int16 { return 2 }
+func (MyStruct) TypeID() uint16 { return 2 }
 
 func (s MyStruct) toBytes(data *bytes.Buffer) {
 	serializeInt16(2, data)

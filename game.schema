@@ -30,7 +30,13 @@ function map(keyType, valueType)
 	return {type = "map", key = keyType, value = valueType}
 end
 
+foo = struct {
+	bar = int32,
+}
+
 player = struct {
 	id = uint32,
 	name = str,
+	inventory = list(foo),
+	idk = foo,
 }

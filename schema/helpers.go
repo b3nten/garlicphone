@@ -7,15 +7,28 @@ import (
 	"fmt"
 )
 
+type Serializable interface {
+	TypeID() uint16
+	toBytes(*bytes.Buffer)
+}
+
+func Serialize[K any, KT interface {
+	*K
+	Serializable
+}](value KT) ([]byte, error) {
+	buf := bytes.Buffer{}
+	value.toBytes(&buf)
+	return buf.Bytes(), nil
+}
+
+func Ptr[K any](v K) *K {
+	return &v
+}
+
 var UnknownFieldError = errors.New("unknown field index")
 
 const lenSize = 4
 const idSize = 2
-
-type Serializable interface {
-	TypeID() int16
-	toBytes(*bytes.Buffer)
-}
 
 type deserializer[K any] func(data []byte, offset int) (value K, len int, err error)
 
@@ -218,8 +231,4 @@ func getField(b []byte) (uint16, error) {
 		return 0, fmt.Errorf("insufficient data for field index")
 	}
 	return binary.BigEndian.Uint16(b), nil
-}
-
-func Ptr[K any](v K) *K {
-	return &v
 }

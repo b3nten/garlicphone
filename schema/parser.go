@@ -12,123 +12,48 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-type structValue struct {
-	id     uint16
-	name   string
-	uuid   string
-	fields []fieldWriter
+type Type interface {
+	TypeKind() string
 }
 
-type fieldWriter interface {
-	printField() string
-	printToBytes() string
-	printFromBytes() string
+type PrimitiveType struct {
+	Name string
 }
 
-type primitiveField struct {
-	id   uint16
-	name string
-	typ  string
+func (p PrimitiveType) TypeKind() string { return "primitive" }
+
+type Field struct {
+	Name string
+	ID   uint16
+	Type Type
 }
 
-func (pfv primitiveField) printField() string {
-	return fmt.Sprintf(
-		"\n\t %s optional.Optional[%s]",
-		toPascalCase(pfv.name),
-		pfv.typ,
-	)
+type StructType struct {
+	ID     uint16
+	UUID   string
+	Name   string
+	Fields []Field
 }
 
-func (pfv primitiveField) printToBytes() string {
-	return fmt.Sprintf(
-		"\tif it.%s.Exists() {\n\t\tappendUint16(&data, %d)\n\t\tappend%s(&data, it.%s.MustGet())\n\t}\n",
-		toPascalCase(pfv.name),
-		pfv.id,
-		toPascalCase(pfv.typ),
-		toPascalCase(pfv.name),
-	)
+func (s StructType) TypeKind() string { return "struct" }
+
+type ListType struct {
+	ElementType Type
 }
 
-func (pfv primitiveField) printFromBytes() string {
-	return fmt.Sprintf(
-		"\tcase %d: return read%s(data, offset, &it.%s)\n",
-		pfv.id,
-		toPascalCase(pfv.typ),
-		toPascalCase(pfv.name),
-	)
+func (l ListType) TypeKind() string { return "list" }
+
+type Schema struct {
+	Structs []StructType
 }
 
-func (sv structValue) printStruct() string {
-	sb := strings.Builder{}
+type primitiveField struct{}
 
-	// print struct
-	sb.WriteString(fmt.Sprintf("type %s struct { ",  toPascalCase(sv.name)))
-	for _, field := range sv.fields {
-		sb.WriteString(field.printField())
-	}
-	sb.WriteString("\n}\n\n")
-
-	// print to bytes
-	sb.WriteString("func (it " + toPascalCase(sv.name) + ") ToBytes() []byte {\n")
-	sb.WriteString("\tvar data bytes.Buffer\n\n")
-	sb.WriteString(fmt.Sprintf("\tappendUint16(&data, %d)\n", sv.id))
-	sb.WriteString("\tappendUint32(&data, 0)\n\n")
-	for _, field := range sv.fields {
-		sb.WriteString(field.printToBytes())
-	}
-	sb.WriteString("\n\tbinary.BigEndian.PutUint32(data.Bytes()[idSize:], uint32(len(data.Bytes())-(idSize+lenSize)))\n")
-	sb.WriteString("\treturn data.Bytes()\n")
-	sb.WriteString("}\n\n")
-
-	// print from bytes
-	sb.WriteString("func (it *" + toPascalCase(sv.name) + ") FromBytes(bytes []byte) (int, error) {\n")
-	sb.WriteString("\treturn parse(it, bytes)\n")
-	sb.WriteString("}\n\n")
-
-	// print parse fields
-	sb.WriteString("func (it *" + toPascalCase(sv.name) + ") parseFields(data []byte, fieldIndex uint16, offset int) (int, error) {\n")
-	sb.WriteString("\tswitch fieldIndex {\n")
-	for _, field := range sv.fields {
-		sb.WriteString(field.printFromBytes())
-	}
-	sb.WriteString("\t}\n")
-	sb.WriteString("\treturn 0, UnknownFieldError\n")
-	sb.WriteString("}\n\n")
-	return sb.String()
-}
-
-func printGo(structs []*structValue) error {
-	sb := strings.Builder{}
-	sb.WriteString("package schematest\n\n")
-	sb.WriteString("import(\n")
-	sb.WriteString("\t\"bytes\"\n")
-	sb.WriteString("\t\"encoding/binary\"\n")
-	sb.WriteString("\t\"6enten/garlicphone/optional\"\n")
-	sb.WriteString("\t\"errors\"\n")
-	sb.WriteString("\t\"fmt\"\n")
-	sb.WriteString(")\n\n")
-
-	sb.WriteString("// Type definitions\n\n")
-	for _, str := range structs {
-		sb.WriteString(str.printStruct() + "\n")
-	}
-
-	sb.WriteString("// Utilities\n\n")
-	postlude, err := ReadAfterLine("schema/util.go", 10)
-	if err != nil {
-		return err
-	}
-	sb.WriteString(postlude)
-
-	os.WriteFile("gen/schema.go", []byte(sb.String()), 0644)
-	return nil
-}
-
-func parseFile() ([]*structValue, error) {
+func parseFile() (Schema, error) {
 	bytes, err := os.ReadFile("game.schema")
 	if err != nil {
 		fmt.Println("Error reading file:", err)
-		return nil, err
+		return Schema{}, err
 	}
 	L := lua.NewState()
 	defer L.Close()
@@ -138,19 +63,19 @@ func parseFile() ([]*structValue, error) {
 	}
 
 	lstructs := []*lua.LTable{}
-	structs := []*structValue{}
-	ltos := map[*lua.LTable]*structValue{}
+	structs := map[string]*StructType{}
+	ltos := map[*lua.LTable]*StructType{}
 	if tbl, ok := L.GetGlobal("_G").(*lua.LTable); ok {
 		// Iterate over the global table to find structs defined in the global scope
 		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
 			if structTbl, ok := value.(*lua.LTable); ok {
 				if structTbl.RawGet(lua.LString("type")) == lua.LString("struct") {
-					sv := structValue{
-						name: key.String(),
-						id:   uint16(FNV32a(key.String())),
-						uuid: structTbl.RawGet(lua.LString("uuid")).String(),
+					sv := StructType{
+						Name: key.String(),
+						ID:   uint16(FNV32a(key.String())),
+						UUID: structTbl.RawGet(lua.LString("uuid")).String(),
 					}
-					structs = append(structs, &sv)
+					structs[sv.UUID] = &sv
 					lstructs = append(lstructs, structTbl)
 					ltos[structTbl] = &sv
 				}
@@ -162,12 +87,12 @@ func parseFile() ([]*structValue, error) {
 				i := 10
 				fields.ForEach(func(key lua.LValue, value lua.LValue) {
 					if fieldTbl, ok := value.(*lua.LTable); ok {
-						_ = fieldTbl.RawGet(lua.LString("type")).String()
 						sv := ltos[lstruct]
-						sv.fields = append(sv.fields, primitiveField{
-							id:   uint16(i),
-							name: key.String(),
-							typ:  fieldTbl.RawGet(lua.LString("name")).String(),
+						typ := mapType(fieldTbl, structs)
+						sv.Fields = append(sv.Fields, Field{
+							ID:   uint16(i),
+							Name: key.String(),
+							Type: typ,
 						})
 						i++
 					}
@@ -175,7 +100,27 @@ func parseFile() ([]*structValue, error) {
 			}
 		}
 	}
-	return structs, nil
+	structList := []StructType{}
+	for _, sl := range structs {
+		fmt.Println("Struct:", sl)
+		structList = append(structList, *sl)
+	}
+	return Schema{structList}, nil
+}
+
+func mapType(tbl *lua.LTable, structs map[string]*StructType) Type {
+	switch tbl.RawGet(lua.LString("type")).String() {
+	case "primitive":
+		return PrimitiveType{Name: tbl.RawGet(lua.LString("name")).String()}
+	case "struct":
+		return structs[tbl.RawGet(lua.LString("uuid")).String()]
+	case "list":
+		return ListType{
+			ElementType: mapType(tbl.RawGet(lua.LString("of")).(*lua.LTable), structs),
+		}
+	default:
+		return nil
+	}
 }
 
 func FNV32a(text string) uint32 {
