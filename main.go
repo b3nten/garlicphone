@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lesismal/nbio/nbhttp/websocket"
+	"6enten/garlicphone/gen"
 )
 
 var fs = http.FileServer(http.Dir("./web"))
@@ -38,7 +39,30 @@ func onWebsocket(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upgraded:", conn.RemoteAddr().String())
 }
 
+func testSchema() {
+	player := schematest.Player{
+		Name: schematest.Ptr("Benny"),
+		Nested: &[][]schematest.Foo{
+			[]schematest.Foo{
+				schematest.Foo{
+					Bar: schematest.Ptr(int32(123)),
+				},
+			},
+		},
+	}
+
+	data, err := schematest.Serialize(&player)
+
+	fmt.Println("Serialized data:", data, "err:", err)
+
+	newPlayer := &schematest.Player{}
+	err = schematest.Deserialize(data, newPlayer)
+	fmt.Println("Deserialized player:", *newPlayer.Name, *(*newPlayer.Nested)[0][0].Bar, "err:", err)
+}
+
 func main() {
+	testSchema()
+	return
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/ws", onWebsocket)
 	mux.HandleFunc("/", fs.ServeHTTP)

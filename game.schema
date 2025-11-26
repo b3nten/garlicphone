@@ -39,4 +39,5 @@ player = struct {
 	name = str,
 	inventory = list(foo),
 	idk = foo,
+	nested = list(list(foo)),
 }

@@ -166,7 +166,7 @@ func (s *MyStruct) fromBytes(data []byte, fieldIndex uint16, offset int) (int, e
 	return 0, UnknownFieldError
 }
 
-func main() {
+func _main() {
 	values, _ := parseFile()
 	printGo(values)
 

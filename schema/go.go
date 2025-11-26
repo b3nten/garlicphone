@@ -46,6 +46,22 @@ func printListSerializer(lt ListType) string {
 	}
 }
 
+func printListDeserializer(lt ListType) string {
+	switch lt.ElementType.TypeKind() {
+		case "primitive":
+			pt := lt.ElementType.(PrimitiveType)
+			return fmt.Sprintf("newListDeserializer[%s](deserialize%s)", pt.Name, capFirst(pt.Name))
+		case "struct":
+			st := lt.ElementType.(*StructType)
+			return fmt.Sprintf("newListDeserializer[%s](deserializeStruct[%s])", toPascalCase(st.Name), toPascalCase(st.Name))
+		case "list":
+			nlt := lt.ElementType.(ListType)
+			return fmt.Sprintf("newListDeserializer[%s](%s)", printType(nlt), printListDeserializer(nlt))
+		default:
+			return "unknown"
+	}
+}
+
 func printStruct(sv StructType) string {
 	sb := strings.Builder{}
 
@@ -96,15 +112,15 @@ func printStruct(sv StructType) string {
 		switch field.Type.TypeKind() {
 			case "primitive":
 				pt := field.Type.(PrimitiveType)
-				name = capFirst(pt.Name)
+				name = "deserialize" + capFirst(pt.Name)
 			case "struct":
-				name = "Struct[" + toPascalCase(field.Type.(*StructType).Name) + "]"
+				name = "deserialize" + "Struct[" + toPascalCase(field.Type.(*StructType).Name) + "]"
 			case "list":
-				name = "foo"
+				name = printListDeserializer(field.Type.(ListType))
 		}
 		sb.WriteString(
 			fmt.Sprintf(
-				"\tcase %d: val, len, err := deserialize%s(data, offset); it.%s = &val; return len, err\n",
+				"\tcase %d: val, len, err := %s(data, offset); it.%s = &val; return len, err\n",
 			 	i,
 				name,
 				toPascalCase(field.Name),
