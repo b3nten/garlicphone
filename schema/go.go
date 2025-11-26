@@ -30,6 +30,22 @@ func printField(f Field) string {
 	)
 }
 
+func printListSerializer(lt ListType) string {
+	switch lt.ElementType.TypeKind() {
+		case "primitive":
+			pt := lt.ElementType.(PrimitiveType)
+			return fmt.Sprintf("newListSerializer[%s](serialize%s)", pt.Name, capFirst(pt.Name))
+		case "struct":
+			st := lt.ElementType.(*StructType)
+			return fmt.Sprintf("newListSerializer[%s](serializeStruct[%s])", toPascalCase(st.Name), toPascalCase(st.Name))
+		case "list":
+			nlt := lt.ElementType.(ListType)
+			return fmt.Sprintf("newListSerializer[%s](%s)", printType(nlt), printListSerializer(nlt))
+		default:
+			return "unknown"
+	}
+}
+
 func printStruct(sv StructType) string {
 	sb := strings.Builder{}
 
@@ -60,8 +76,8 @@ func printStruct(sv StructType) string {
 				sb.WriteString(fmt.Sprintf("\t\tserializeStruct(*it.%s, data)\n", toPascalCase(field.Name)))
 			case "list":
 				sb.WriteString(
-					fmt.Sprintf("\t\tnewListSerializer(%s)(*it.%s, data)\n",
-						"foo",
+					fmt.Sprintf("\t\t%s(*it.%s, data)\n",
+						printListSerializer(field.Type.(ListType)),
 						toPascalCase(field.Name),
 					),
 				)

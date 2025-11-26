@@ -7,7 +7,7 @@ import(
 	"fmt"
 )
 
-type Foo struct { 
+type Foo struct {
 	 Bar *int32
 }
 func (Foo) TypeID() uint16 { return uint16(32471) }
@@ -28,7 +28,7 @@ func (it *Foo) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error
 	return 0, UnknownFieldError
 }
 
-type Player struct { 
+type Player struct {
 	 Inventory *[]Foo
 	 Idk *Foo
 	 Id *uint32
