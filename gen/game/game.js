@@ -1,5 +1,19 @@
 // generated file, do not edit!
 
+export class Foo {
+	static get TypeID() { 32471; }
+	static __deserialize = createStaticDeserializer(this)
+	__serialize = (buf) => {
+		buf.writeuint16(32471);
+		const startLen = buf.length;
+		buf.writeuint32(0);
+		if(this.bar !== 'undefined') {
+			buf.writeuint16(10);
+			buf.writeint32(this.bar);
+		}
+	}
+}
+
 export class Player {
 	static get TypeID() { 49920; }
 	static __deserialize = createStaticDeserializer(this)
@@ -17,7 +31,7 @@ export class Player {
 		}
 		if(this.inventory !== 'undefined') {
 			buf.writeuint16(12);
-			buf.listWriter(buf.writeint32)(this.inventory)
+			buf.listwriter(buf.writestruct)(this.inventory)
 		}
 		if(this.idk !== 'undefined') {
 			buf.writeuint16(13);
@@ -25,21 +39,7 @@ export class Player {
 		}
 		if(this.nested !== 'undefined') {
 			buf.writeuint16(14);
-			buf.listWriter(buf.listWriter(buf.writestruct))(this.nested)
-		}
-	}
-}
-
-export class Foo {
-	static get TypeID() { 32471; }
-	static __deserialize = createStaticDeserializer(this)
-	__serialize = (buf) => {
-		buf.writeuint16(32471);
-		const startLen = buf.length;
-		buf.writeuint32(0);
-		if(this.bar !== 'undefined') {
-			buf.writeuint16(10);
-			buf.writeint32(this.bar);
+			buf.listwriter(buf.listwriter(buf.writestruct))(this.nested)
 		}
 	}
 }

@@ -23,14 +23,13 @@ local function print_list_serializer(type)
 	elseif type.kind == "struct" then
 		return "buf.writestruct"
 	elseif type.kind == "list" then
-		return "buf.listwriter(${w})" % {w = print_list_serializer({type = type.of})}
+		return "buf.listwriter(${w})" % {w = print_list_serializer(type.of)}
 	else
 		error("Unknown list element type")
 	end
 end
 
 local function print_serializer_fn(field)
-	print(field.type.kind)
 	if field.type.kind == "primitive" then
 		return "buf.write${type}(this.${field});" % {type = field.type.name, field = field.name}
 	elseif field.type.kind == "struct" then
