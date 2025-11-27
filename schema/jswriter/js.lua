@@ -52,6 +52,9 @@ local function print_str_serializer(struct)
 		out = out .. "\t\t\t" .. print_serializer_fn(field) .. "\n"
 		out = out .. "\t\t}\n"
 	end
+	out = out .. "\t\tconst endIndex = buf.length;\n"
+	out = out .. "\t\tbuf.setuint32(lenIndex, endIndex - (lenIndex + 4))\n"
+	out = out .. "\treturn buf;\n"
 	return out .. "\t}\n"
 end
 
