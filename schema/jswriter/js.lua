@@ -13,17 +13,17 @@ end
 local tab = "\t"
 local brk = "\n"
 
-local desField = "__deserializeField"
+local desField = "__deserialize_field"
 local serField = "__serialize"
 local staticDes = "__deserialize"
 
 local function print_list_serializer(type)
 	if type.kind == "primitive" then
-		return "buf.write${type}" % {type = type.name}
+		return "b.write_${type}" % {type = type.name}
 	elseif type.kind == "struct" then
-		return "buf.writestruct"
+		return "b.write_struct"
 	elseif type.kind == "list" then
-		return "buf.listwriter(${w})" % {w = print_list_serializer(type.of)}
+		return "b.list_writer(${w})" % {w = print_list_serializer(type.of)}
 	else
 		error("Unknown list element type")
 	end
@@ -31,37 +31,37 @@ end
 
 local function print_serializer_fn(field)
 	if field.type.kind == "primitive" then
-		return "buf.write${type}(this.${field});" % {type = field.type.name, field = field.name}
+		return "b.write_${type}(this.${field});" % {type = field.type.name, field = field.name}
 	elseif field.type.kind == "struct" then
-		return "buf.writestruct(this.${field});" % {field = field.name}
+		return "b.write_struct(this.${field});" % {field = field.name}
 	elseif field.type.kind == "list" then
-		return "buf.listwriter(${w})(this.${field})" % {w = print_list_serializer(field.type.of), field = field.name}
+		return "b.list_writer(${w})(this.${field})" % {w = print_list_serializer(field.type.of), field = field.name}
 	else
 		error("Unknown field type")
 	end
 end
 
 local function print_str_serializer(struct)
-	local out =  "\t${name} = (buf) => {\n" % {name = serField}
-	out = out .. "\t\tbuf.writeuint16(${typeid});\n" % {typeid = struct.id}
-	out = out .. "\t\tconst startLen = buf.length;\n"
-	out = out .. "\t\tbuf.writeuint32(0);\n"
+	local out =  "\t${name} = (b) => {\n" % {name = serField}
+	out = out .. "\t\tb.write_uint16(${typeid});\n" % {typeid = struct.id}
+	out = out .. "\t\tconst start_index = b.length;\n"
+	out = out .. "\t\tb.write_uint32(0);\n"
 	for _, field in pairs(struct.fields) do
 		out = out .. "\t\tif(this.${field} !== 'undefined') {\n" % {field = field.name}
-		out = out .. "\t\t\tbuf.writeuint16(${fieldid});\n" % {fieldid = field.id}
+		out = out .. "\t\t\tb.write_uint16(${fieldid});\n" % {fieldid = field.id}
 		out = out .. "\t\t\t" .. print_serializer_fn(field) .. "\n"
 		out = out .. "\t\t}\n"
 	end
-	out = out .. "\t\tconst endIndex = buf.length;\n"
-	out = out .. "\t\tbuf.setuint32(lenIndex, endIndex - (lenIndex + 4))\n"
-	out = out .. "\treturn buf;\n"
+	out = out .. "\t\tconst end_index = b.length;\n"
+	out = out .. "\t\tb.set_uint32(start_index, end_index - (start_index + 4))\n"
+	out = out .. "\t\treturn b;\n"
 	return out .. "\t}\n"
 end
 
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % {name = to_pascal_case(struct.name)}
 	out = out .. "\tstatic get TypeID() { ${typeid}; }\n" % {typeid = struct.id}
-	out = out .. "\tstatic ${f} = createStaticDeserializer(this)\n" % {f = staticDes}
+	out = out .. "\tstatic ${f} = create_static_deserializer(this)\n" % {f = staticDes}
 	out = out .. print_str_serializer(struct)
 
 	return out .. "}\n\n"
@@ -85,71 +85,71 @@ class ByteBuffer {
 		this.#view.set(value, this.#len - value.length);
 	}
 
-	writebool = (value) => {
+	write_bool = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setUint8(this.#len - 1, value ? 1 : 0);
 	}
 
-	writeint8 = (value) => {
+	write_int8 = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setInt8(this.#len - 1, value);
 	}
 
-	writeuint8 = (value) => {
+	write_uint8 = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setUint8(this.#len - 1, value);
 	}
 
-	writeint16 = (value) => {
+	write_int16 = (value) => {
 		this.#resize(this.#len + 2);
 		this.#dview.setInt16(this.#len - 2, value);
 	}
 
-	writeuint16 = (value) => {
+	write_uint16 = (value) => {
 		this.#resize(this.#len + 2);
 		this.#dview.setUint16(this.#len - 2, value);
 	}
 
-	writeint32 = (value) => {
+	write_int32 = (value) => {
 		this.#resize(this.#len + 4);
 		this.#dview.setInt32(this.#len - 4, value);
 	}
 
-	writeuint32 = (value) => {
+	write_uint32 = (value) => {
 		this.#resize(this.#len + 4);
 		this.#dview.setUint32(this.#len - 4, value);
 	}
 
-	writestring = (value) => {
+	write_string = (value) => {
 		const encoded = this.#encoder.encode(value);
-		this.setuint32(this.#len, encoded.length);
+		this.set_uint32(this.#len, encoded.length);
 		this.write(encoded);
 	}
 
-	writestruct = (value) => {
+	write_struct = (value) => {
 		value.__serialize(this);
 	}
 
-	listWriter = (s) => (value) => {
-		this.writeuint32(0); // Placeholder for size
+	list_writer = (s) => (value) => {
+		this.write_uint32(0); // Placeholder for size
 		const sizeIndex = this.length;
 		for (const item of value) {
 			s(item);
 		}
-		this.setuint32(sizeIndex - 4, this.#len - sizeIndex);
+		this.set_uint32(sizeIndex - 4, this.#len - sizeIndex);
 	}
 
-	setuint8(offset, value) {
+	set_uint8(offset, value) {
 		this.#resize(offset + 1);
 		this.#dview.setUint8(offset, value);
 	}
 
-	setuint16(offset, value) {
+	set_uint16(offset, value) {
 		this.#resize(offset + 2);
 		this.#dview.setUint16(offset, value);
 	}
 
-	setuint32(offset, value) {
+	set_uint32(offset, value) {
 		this.#resize(offset + 4);
 		this.#dview.setUint32(offset, value);
 	}
@@ -175,42 +175,42 @@ class ByteBuffer {
 	}
 }
 
-const deserializebool = (view, offset, struct, field) => {
+const deserialize_bool = (view, offset, struct, field) => {
 	struct[field] = view.getUint8(offset) !== 0;
 	return offset + 1;
 }
 
-const deserializeint8 = (data, offset, struct, field) => {
+const deserialize_int8 = (data, offset, struct, field) => {
 	struct[field] = data.getInt8(offset);
 	return offset + 1;
 }
 
-const deserializeuint8 = (data, offset, struct, field) => {
+const deserialize_uint8 = (data, offset, struct, field) => {
 	struct[field] = data.getUint8(offset);
 	return offset + 1;
 }
 
-const deserializeint16 = (data, offset, struct, field) => {
+const deserialize_int16 = (data, offset, struct, field) => {
 	struct[field] = data.getInt16(offset);
 	return offset + 2;
 }
 
-const deserializeuint16 = (data, offset, struct, field) => {
+const deserialize_uint16 = (data, offset, struct, field) => {
 	struct[field] = data.getUint16(offset);
 	return offset + 2;
 }
 
-const deserializeint32 = (data, offset, struct, field) => {
+const deserialize_int32 = (data, offset, struct, field) => {
 	struct[field] = data.getInt32(offset);
 	return offset + 4;
 }
 
-const deserializeuint32 = (data, offset, struct, field) => {
+const deserialize_uint32 = (data, offset, struct, field) => {
 	struct[field] = data.getUint32(offset);
 	return offset + 4;
 }
 
-const deserializestring = (data, offset, struct, field) => {
+const deserialize_string = (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const bytes = new Uint8Array(data.buffer, data.byteOffset + offset, length);
@@ -219,21 +219,21 @@ const deserializestring = (data, offset, struct, field) => {
 	return offset + length;
 }
 
-const newListDeserializer = (itemDeserializer) => (data, offset, struct, field) => {
+const new_list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const endOffset = offset + length;
 	const list = [];
 	let i = 0;
 	while (offset < endOffset) {
-		offset = itemDeserializer(data, offset, list, i);
+		offset = item_deserializer(data, offset, list, i);
 		i++;
 	}
 	struct[field] = list;
 	return offset;
 }
 
-function parseStruct(struct, view, offset) {
+function parse_struct(struct, view, offset) {
 	const typeID = view.getUint16(offset);
 	offset += 2;
 	if (typeID !== struct.constructor.TypeID) {
@@ -246,8 +246,8 @@ function parseStruct(struct, view, offset) {
 	while (offset < endOffset) {
 		const fieldID = view.getUint16(offset);
 		offset += 2;
-		const next = struct.__deserializeField(view, fieldID, offset)
-		if (next === unknownField) {
+		const next = struct.__deserialize_field(view, fieldID, offset)
+		if (next === unknown_field) {
 			return totalSize;
 		}
 		offset = next;
@@ -255,16 +255,16 @@ function parseStruct(struct, view, offset) {
 	return offset;
 }
 
-function createStaticDeserializer(cls) {
+function create_static_deserializer(cls) {
 	return (view, offset, struct, field) => {
 		const s = new cls();
-		offset = parseStruct(s, view, offset);
+		offset = parse_struct(s, view, offset);
 		struct[field] = s;
 		return offset;
 	}
 }
 
-const unknownField = new Error("Unknown Field")
+const unknown_field = new Error("Unknown Field")
 ]]
 
 output = output .. "\n" .. include .. "\n"

@@ -1,46 +1,52 @@
 // generated file, do not edit!
 
-export class Foo {
-	static get TypeID() { 32471; }
-	static __deserialize = createStaticDeserializer(this)
-	__serialize = (buf) => {
-		buf.writeuint16(32471);
-		const startLen = buf.length;
-		buf.writeuint32(0);
-		if(this.bar !== 'undefined') {
-			buf.writeuint16(10);
-			buf.writeint32(this.bar);
+export class Player {
+	static get TypeID() { 49920; }
+	static __deserialize = create_static_deserializer(this)
+	__serialize = (b) => {
+		b.write_uint16(49920);
+		const start_index = b.length;
+		b.write_uint32(0);
+		if(this.inventory !== 'undefined') {
+			b.write_uint16(10);
+			b.list_writer(b.write_struct)(this.inventory)
 		}
+		if(this.idk !== 'undefined') {
+			b.write_uint16(11);
+			b.write_struct(this.idk);
+		}
+		if(this.nested !== 'undefined') {
+			b.write_uint16(12);
+			b.list_writer(b.list_writer(b.write_struct))(this.nested)
+		}
+		if(this.id !== 'undefined') {
+			b.write_uint16(13);
+			b.write_uint32(this.id);
+		}
+		if(this.name !== 'undefined') {
+			b.write_uint16(14);
+			b.write_string(this.name);
+		}
+		const end_index = b.length;
+		b.setuint32(start_index, end_index - (start_index + 4))
+		return b;
 	}
 }
 
-export class Player {
-	static get TypeID() { 49920; }
-	static __deserialize = createStaticDeserializer(this)
-	__serialize = (buf) => {
-		buf.writeuint16(49920);
-		const startLen = buf.length;
-		buf.writeuint32(0);
-		if(this.id !== 'undefined') {
-			buf.writeuint16(10);
-			buf.writeuint32(this.id);
+export class Foo {
+	static get TypeID() { 32471; }
+	static __deserialize = create_static_deserializer(this)
+	__serialize = (b) => {
+		b.write_uint16(32471);
+		const start_index = b.length;
+		b.write_uint32(0);
+		if(this.bar !== 'undefined') {
+			b.write_uint16(10);
+			b.write_int32(this.bar);
 		}
-		if(this.name !== 'undefined') {
-			buf.writeuint16(11);
-			buf.writestring(this.name);
-		}
-		if(this.inventory !== 'undefined') {
-			buf.writeuint16(12);
-			buf.listwriter(buf.writestruct)(this.inventory)
-		}
-		if(this.idk !== 'undefined') {
-			buf.writeuint16(13);
-			buf.writestruct(this.idk);
-		}
-		if(this.nested !== 'undefined') {
-			buf.writeuint16(14);
-			buf.listwriter(buf.listwriter(buf.writestruct))(this.nested)
-		}
+		const end_index = b.length;
+		b.setuint32(start_index, end_index - (start_index + 4))
+		return b;
 	}
 }
 
@@ -53,71 +59,71 @@ class ByteBuffer {
 		this.#view.set(value, this.#len - value.length);
 	}
 
-	writebool = (value) => {
+	write_bool = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setUint8(this.#len - 1, value ? 1 : 0);
 	}
 
-	writeint8 = (value) => {
+	write_int8 = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setInt8(this.#len - 1, value);
 	}
 
-	writeuint8 = (value) => {
+	write_uint8 = (value) => {
 		this.#resize(this.#len + 1);
 		this.#dview.setUint8(this.#len - 1, value);
 	}
 
-	writeint16 = (value) => {
+	write_int16 = (value) => {
 		this.#resize(this.#len + 2);
 		this.#dview.setInt16(this.#len - 2, value);
 	}
 
-	writeuint16 = (value) => {
+	write_uint16 = (value) => {
 		this.#resize(this.#len + 2);
 		this.#dview.setUint16(this.#len - 2, value);
 	}
 
-	writeint32 = (value) => {
+	write_int32 = (value) => {
 		this.#resize(this.#len + 4);
 		this.#dview.setInt32(this.#len - 4, value);
 	}
 
-	writeuint32 = (value) => {
+	write_uint32 = (value) => {
 		this.#resize(this.#len + 4);
 		this.#dview.setUint32(this.#len - 4, value);
 	}
 
-	writestring = (value) => {
+	write_string = (value) => {
 		const encoded = this.#encoder.encode(value);
-		this.setuint32(this.#len, encoded.length);
+		this.set_uint32(this.#len, encoded.length);
 		this.write(encoded);
 	}
 
-	writestruct = (value) => {
+	write_struct = (value) => {
 		value.__serialize(this);
 	}
 
-	listWriter = (s) => (value) => {
-		this.writeuint32(0); // Placeholder for size
+	list_writer = (s) => (value) => {
+		this.write_uint32(0); // Placeholder for size
 		const sizeIndex = this.length;
 		for (const item of value) {
 			s(item);
 		}
-		this.setuint32(sizeIndex - 4, this.#len - sizeIndex);
+		this.set_uint32(sizeIndex - 4, this.#len - sizeIndex);
 	}
 
-	setuint8(offset, value) {
+	set_uint8(offset, value) {
 		this.#resize(offset + 1);
 		this.#dview.setUint8(offset, value);
 	}
 
-	setuint16(offset, value) {
+	set_uint16(offset, value) {
 		this.#resize(offset + 2);
 		this.#dview.setUint16(offset, value);
 	}
 
-	setuint32(offset, value) {
+	set_uint32(offset, value) {
 		this.#resize(offset + 4);
 		this.#dview.setUint32(offset, value);
 	}
@@ -143,42 +149,42 @@ class ByteBuffer {
 	}
 }
 
-const deserializebool = (view, offset, struct, field) => {
+const deserialize_bool = (view, offset, struct, field) => {
 	struct[field] = view.getUint8(offset) !== 0;
 	return offset + 1;
 }
 
-const deserializeint8 = (data, offset, struct, field) => {
+const deserialize_int8 = (data, offset, struct, field) => {
 	struct[field] = data.getInt8(offset);
 	return offset + 1;
 }
 
-const deserializeuint8 = (data, offset, struct, field) => {
+const deserialize_uint8 = (data, offset, struct, field) => {
 	struct[field] = data.getUint8(offset);
 	return offset + 1;
 }
 
-const deserializeint16 = (data, offset, struct, field) => {
+const deserialize_int16 = (data, offset, struct, field) => {
 	struct[field] = data.getInt16(offset);
 	return offset + 2;
 }
 
-const deserializeuint16 = (data, offset, struct, field) => {
+const deserialize_uint16 = (data, offset, struct, field) => {
 	struct[field] = data.getUint16(offset);
 	return offset + 2;
 }
 
-const deserializeint32 = (data, offset, struct, field) => {
+const deserialize_int32 = (data, offset, struct, field) => {
 	struct[field] = data.getInt32(offset);
 	return offset + 4;
 }
 
-const deserializeuint32 = (data, offset, struct, field) => {
+const deserialize_uint32 = (data, offset, struct, field) => {
 	struct[field] = data.getUint32(offset);
 	return offset + 4;
 }
 
-const deserializestring = (data, offset, struct, field) => {
+const deserialize_string = (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const bytes = new Uint8Array(data.buffer, data.byteOffset + offset, length);
@@ -187,21 +193,21 @@ const deserializestring = (data, offset, struct, field) => {
 	return offset + length;
 }
 
-const newListDeserializer = (itemDeserializer) => (data, offset, struct, field) => {
+const new_list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const endOffset = offset + length;
 	const list = [];
 	let i = 0;
 	while (offset < endOffset) {
-		offset = itemDeserializer(data, offset, list, i);
+		offset = item_deserializer(data, offset, list, i);
 		i++;
 	}
 	struct[field] = list;
 	return offset;
 }
 
-function parseStruct(struct, view, offset) {
+function parse_struct(struct, view, offset) {
 	const typeID = view.getUint16(offset);
 	offset += 2;
 	if (typeID !== struct.constructor.TypeID) {
@@ -214,8 +220,8 @@ function parseStruct(struct, view, offset) {
 	while (offset < endOffset) {
 		const fieldID = view.getUint16(offset);
 		offset += 2;
-		const next = struct.__deserializeField(view, fieldID, offset)
-		if (next === unknownField) {
+		const next = struct.__deserialize_field(view, fieldID, offset)
+		if (next === unknown_field) {
 			return totalSize;
 		}
 		offset = next;
@@ -223,13 +229,14 @@ function parseStruct(struct, view, offset) {
 	return offset;
 }
 
-function createStaticDeserializer(cls) {
+function create_static_deserializer(cls) {
 	return (view, offset, struct, field) => {
 		const s = new cls();
-		offset = parseStruct(s, view, offset);
+		offset = parse_struct(s, view, offset);
 		struct[field] = s;
 		return offset;
 	}
 }
 
-const unknownField = new Error("Unknown Field")
+const unknown_field = new Error("Unknown Field")
+
