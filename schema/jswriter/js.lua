@@ -41,47 +41,102 @@ local function print_serializer_fn(field)
 	end
 end
 
-local function print_str_serializer(struct)
-	local out =  "\t${name} = (b) => {\n" % {name = serField}
-	out = out .. "\t\tb.write_uint16(${typeid});\n" % {typeid = struct.id}
-	out = out .. "\t\tconst start_index = b.length;\n"
-	out = out .. "\t\tb.write_uint32(0);\n"
+local function print_struct_serializer(struct)
+	local out =  "function ${sname}_${ser}(b) {\n" % {
+		sname = to_pascal_case(struct.name),
+		ser = serField
+	}
+	out = out .. "\tb.write_uint16(${typeid});\n" % {typeid = struct.id}
+	out = out .. "\tconst start_index = b.length;\n"
+	out = out .. "\tb.write_uint32(0);\n"
 	for _, field in pairs(struct.fields) do
-		out = out .. "\t\tif(this.${field} !== 'undefined') {\n" % {field = field.name}
-		out = out .. "\t\t\tb.write_uint16(${fieldid});\n" % {fieldid = field.id}
-		out = out .. "\t\t\t" .. print_serializer_fn(field) .. "\n"
-		out = out .. "\t\t}\n"
+		out = out .. "\tif(this.${field} !== 'undefined') {\n" % {field = field.name}
+		out = out .. "\t\tb.write_uint16(${fieldid});\n" % {fieldid = field.id}
+		out = out .. "\t\t" .. print_serializer_fn(field) .. "\n"
+		out = out .. "\t}\n"
 	end
-	out = out .. "\t\tconst end_index = b.length;\n"
-	out = out .. "\t\tb.set_uint32(start_index, end_index - (start_index + 4))\n"
-	out = out .. "\t\treturn b;\n"
-	return out .. "\t}\n"
+	out = out .. "\tconst end_index = b.length;\n"
+	out = out .. "\tb.set_uint32(start_index, end_index - (start_index + 4))\n"
+	out = out .. "\treturn b;\n"
+	out = out .. "}\n"
+	out = out .. "Object.defineProperty(${sname}.prototype, '__serialize', { value: ${sname}___serialize , enumerable: false })\n" % {
+		sname = to_pascal_case(struct.name)
+	}
+	return out
+end
+
+local function print_list_deserializer(type)
+	if type.kind == "primitive" then
+		return "deserialize_${type}" % {type = type.name}
+	elseif type.kind == "struct" then
+		return "${stype}.${sdes}" % {
+			stype = to_pascal_case(type.name),
+			sdes = staticDes
+		}
+	elseif type.kind == "list" then
+		return "list_deserializer(${w})" % {w = print_list_deserializer(type.of)}
+	else
+		error("Unknown list element type")
+	end
 end
 
 local function print_deserializer_fn(field)
 	if field.type.kind == "primitive" then
-		return "deserialize_${type}(data, offset, struct, '${field}')" % {type = field.type.name, field = field.name}
+		return "deserialize_${type}(view, offset, this, '${field}')" % {type = field.type.name, field = field.name}
 	elseif field.type.kind == "struct" then
-		return "${stype}.${sdes}(data, offset, struct, '${field}')"
+		return "${stype}.${sdes}(view, offset, this, '${field}')"
 			% {
 				stype = to_pascal_case(field.type.name),
 				field = field.name,
 				sdes = staticDes
 			}
 	elseif field.type.kind == "list" then
-		return "// unimplemented"
+		return "list_deserializer(${w})(view, offset, this, '${field}')" % {
+			w = print_list_deserializer(field.type.of),
+			field = field.name
+		}
 	else
 		error("Unknown field type")
 	end
 end
 
+local function print_deserializer_switch(struct)
+	local out = "function ${sname}_${name}(view, fieldID, offset) {\n" % {name = desField, sname = to_pascal_case(struct.name)}
+	out = out .. "\tswitch(fieldID) {\n"
+	for _, field in pairs(struct.fields) do
+		out = out .. "\t\tcase ${fieldid}: return ${fn}\n" % {
+			fieldid = field.id,
+			fn = print_deserializer_fn(field)
+		}
+	end
+	out = out .. "\t\tdefault:\n"
+	out = out .. "\t\t\treturn unknown_field;\n"
+	out = out .. "\t}\n"
+	out = out .. "}\n"
+	out = out .. "Object.defineProperty(${sname}.prototype, '__deserialize_field', { value: ${sname}___deserialize_field , enumerable: false })" % {
+		sname = to_pascal_case(struct.name)
+	}
+	return out
+end
+
+local function print_static_deserializer(struct)
+	local out = "Object.defineProperty(${sname}, '__deserialize', { value: create_static_deserializer(${sname}), enumerable: false })\n" % {
+		sname = to_pascal_case(struct.name)
+	}
+	return out
+end
+
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % {name = to_pascal_case(struct.name)}
 	out = out .. "\tstatic get TypeID() { ${typeid}; }\n" % {typeid = struct.id}
-	out = out .. "\tstatic ${f} = create_static_deserializer(this)\n" % {f = staticDes}
-	out = out .. print_str_serializer(struct)
-
-	return out .. "}\n\n"
+	for _, field in pairs(struct.fields) do
+		out = out .. "\t${field}; " % {field = field.name}
+	end
+	out = out .. "\n}\n"
+	out = out .. print_static_deserializer(struct)
+	out = out .. print_struct_serializer(struct)
+	out = out .. print_deserializer_switch(struct)
+	return out .. "\n\n"
 end
 
 -- CODEGEN STEP
@@ -236,7 +291,7 @@ const deserialize_string = (data, offset, struct, field) => {
 	return offset + length;
 }
 
-const new_list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
+const list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const endOffset = offset + length;

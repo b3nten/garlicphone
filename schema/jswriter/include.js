@@ -142,7 +142,7 @@ const deserialize_string = (data, offset, struct, field) => {
 	return offset + length;
 }
 
-const new_list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
+const list_deserializer = (item_deserializer) => (data, offset, struct, field) => {
 	const length = data.getUint32(offset);
 	offset += 4;
 	const endOffset = offset + length;
