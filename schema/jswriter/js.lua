@@ -129,6 +129,12 @@ local function print_struct(struct)
 	for _, field in pairs(struct.fields) do
 		out = out .. "\t${field}; " % {field = field.name}
 	end
+	out = out .. "\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }\n"
+	out = out .. "\n\tfromBytes(bytes) {\n"
+	out = out .. "\t\tconst view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);\n"
+	out = out .. "\t\tparse_struct(this, view, 0);\n"
+	out = out .. "\t\treturn this;\n"
+	out = out .. "\t}\n"
 	out = out .. "\n}\n"
 	out = out .. print_static_deserializer(struct)
 	out = out .. print_struct_serializer(struct)

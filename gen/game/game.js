@@ -2,7 +2,17 @@
 
 export class Foo {
 	static get TypeID() { return 32471; }
-	bar; 
+	bar;
+
+	toBytes() {
+		return this.__serialize(new ByteBuffer()).bytes();
+	}
+
+	fromBytes(bytes) {
+		const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+		parse_struct(this, view, 0);
+		return this;
+	}
 }
 Object.defineProperty(Foo, '__deserialize', { value: create_static_deserializer(Foo), enumerable: false })
 function Foo___serialize(b) {
@@ -29,7 +39,7 @@ Object.defineProperty(Foo.prototype, '__deserialize_field', { value: Foo___deser
 
 export class Player {
 	static get TypeID() { return 49920; }
-	idk; 	nested; 	id; 	name; 	inventory; 
+	idk; 	nested; 	id; 	name; 	inventory;
 }
 Object.defineProperty(Player, '__deserialize', { value: create_static_deserializer(Player), enumerable: false })
 function Player___serialize(b) {
@@ -263,4 +273,3 @@ function create_static_deserializer(cls) {
 }
 
 const unknown_field = new Error("Unknown Field")
-
