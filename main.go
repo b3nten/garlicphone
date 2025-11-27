@@ -43,8 +43,8 @@ func testSchema() {
 	player := schematest.Player{
 		Name: schematest.Ptr("Benny"),
 		Nested: &[][]schematest.Foo{
-			[]schematest.Foo{
-				schematest.Foo{
+			{
+				{
 					Bar: schematest.Ptr(int32(123)),
 				},
 			},

@@ -1,13 +1,9 @@
-package main
+package parser
 
 import (
-	"bufio"
 	"fmt"
 	"hash/fnv"
 	"os"
-
-	"strings"
-	"unicode"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -47,14 +43,12 @@ type Schema struct {
 	Structs []StructType
 }
 
-type primitiveField struct{}
-
-func parseFile() (Schema, error) {
-	bytes, err := os.ReadFile("game.schema")
+func GenerateSchema(file string) (Schema, error) {
+	bytes, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Println("Error reading file:", err)
 		return Schema{}, err
 	}
+
 	L := lua.NewState()
 	defer L.Close()
 
@@ -72,7 +66,7 @@ func parseFile() (Schema, error) {
 				if structTbl.RawGet(lua.LString("type")) == lua.LString("struct") {
 					sv := StructType{
 						Name: key.String(),
-						ID:   uint16(FNV32a(key.String())),
+						ID:   uint16(fnv32a(key.String())),
 						UUID: structTbl.RawGet(lua.LString("uuid")).String(),
 					}
 					structs[sv.UUID] = &sv
@@ -100,12 +94,85 @@ func parseFile() (Schema, error) {
 			}
 		}
 	}
+
 	structList := []StructType{}
 	for _, sl := range structs {
-		fmt.Println("Struct:", sl)
 		structList = append(structList, *sl)
 	}
+
 	return Schema{structList}, nil
+}
+
+func generateTypeTable(L *lua.LState, lt Type) *lua.LTable {
+	tbl := L.NewTable()
+	switch lt.TypeKind() {
+	case "primitive":
+		pt := lt.(PrimitiveType)
+		tbl.RawSet(lua.LString("kind"), lua.LString("primitive"))
+		tbl.RawSet(lua.LString("name"), lua.LString(pt.Name))
+	case "struct":
+		st := lt.(*StructType)
+		tbl.RawSet(lua.LString("kind"), lua.LString("struct"))
+		tbl.RawSet(lua.LString("name"), lua.LString(st.Name))
+		tbl.RawSet(lua.LString("uuid"), lua.LString(st.UUID))
+		tbl.RawSet(lua.LString("id"), lua.LNumber(st.ID))
+	case "list":
+		lt := lt.(ListType)
+		tbl.RawSet(lua.LString("kind"), lua.LString("list"))
+		tbl.RawSet(lua.LString("of"), generateTypeTable(L, lt.ElementType))
+	default:
+		panic(fmt.Sprintf("unknown type kind: %T", lt))
+	}
+	return tbl
+}
+
+func createLuaState(s Schema) *lua.LState {
+	// create state from schema so lua files can generate code
+	L := lua.NewState()
+	schema := L.NewTable()
+	for _, s := range s.Structs {
+		structTable := L.NewTable()
+
+		// set struct properties
+		structTable.RawSet(lua.LString("id"), lua.LNumber(s.ID))
+		structTable.RawSet(lua.LString("uuid"), lua.LString(s.UUID))
+		structTable.RawSet(lua.LString("name"), lua.LString(s.Name))
+
+		// set field properties
+		fieldsTable := L.NewTable()
+		for _, f := range s.Fields {
+			fieldTable := L.NewTable()
+
+			fieldTable.RawSet(lua.LString("name"), lua.LString(f.Name))
+			fieldTable.RawSet(lua.LString("id"), lua.LNumber(f.ID))
+
+			// set type properties
+			typeTable := generateTypeTable(L, f.Type)
+			// assign type to field
+			fieldTable.RawSet(lua.LString("type"), typeTable)
+			// assign field to fields table
+			fieldsTable.RawSet(lua.LString(f.Name), fieldTable)
+		}
+		// assign fields to struct
+		structTable.RawSet(lua.LString("fields"), fieldsTable)
+		// assign struct to schema
+		schema.RawSet(lua.LString(s.Name), structTable)
+	}
+	L.SetGlobal("structs", schema)
+	return L
+}
+
+func RunLuaCodegen(s Schema, script string) (string, error) {
+	L := createLuaState(s)
+	defer L.Close()
+	if err := L.DoString(script); err != nil {
+		return "", err
+	}
+	result := L.GetGlobal("output")
+	if str, ok := result.(lua.LString); ok {
+		return string(str), nil
+	}
+	return "", nil
 }
 
 func mapType(tbl *lua.LTable, structs map[string]*StructType) Type {
@@ -123,65 +190,8 @@ func mapType(tbl *lua.LTable, structs map[string]*StructType) Type {
 	}
 }
 
-func FNV32a(text string) uint32 {
+func fnv32a(text string) uint32 {
 	algorithm := fnv.New32a()
 	algorithm.Write([]byte(text))
 	return algorithm.Sum32()
-}
-
-func toPascalCase(s string) string {
-	if s == "" {
-		return ""
-	}
-
-	var result strings.Builder
-	capitalizeNext := true
-
-	for i, r := range s {
-		if r == '_' || r == '-' || r == ' ' || r == '.' {
-			// Treat these as word separators
-			capitalizeNext = true
-			continue
-		}
-
-		if unicode.IsUpper(r) && i > 0 {
-			// If we encounter an uppercase letter that's not at the start,
-			// it might be camelCase, so capitalize it
-			result.WriteRune(r)
-			capitalizeNext = false
-		} else if capitalizeNext {
-			result.WriteRune(unicode.ToUpper(r))
-			capitalizeNext = false
-		} else {
-			result.WriteRune(unicode.ToLower(r))
-		}
-	}
-
-	return result.String()
-}
-
-func ReadAfterLine(filename string, lineNum int) (string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	var result strings.Builder
-	currentLine := 0
-
-	for scanner.Scan() {
-		currentLine++
-		if currentLine > lineNum {
-			result.WriteString(scanner.Text())
-			result.WriteString("\n")
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error reading file: %w", err)
-	}
-
-	return result.String(), nil
 }

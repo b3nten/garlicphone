@@ -1,28 +1,31 @@
-package main
+package gowriter
 
 import (
+	"6enten/garlicphone/schema/parser"
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 )
 
-func printType(t Type) string {
+func printType(t parser.Type) string {
 	switch t.TypeKind() {
 		case "primitive":
-			pt := t.(PrimitiveType)
+			pt := t.(parser.PrimitiveType)
 			return pt.Name
 		case "struct":
-			st := t.(*StructType)
+			st := t.(*parser.StructType)
 			return toPascalCase(st.Name)
 		case "list":
-			lt := t.(ListType)
+			lt := t.(parser.ListType)
 			return fmt.Sprintf("[]%s", printType(lt.ElementType))
 		default:
 			return "unknown"
 	}
 }
 
-func printField(f Field) string {
+func printField(f parser.Field) string {
 	return fmt.Sprintf(
 		"\n\t %s *%s",
 		toPascalCase(f.Name),
@@ -30,39 +33,39 @@ func printField(f Field) string {
 	)
 }
 
-func printListSerializer(lt ListType) string {
+func printListSerializer(lt parser.ListType) string {
 	switch lt.ElementType.TypeKind() {
 		case "primitive":
-			pt := lt.ElementType.(PrimitiveType)
+			pt := lt.ElementType.(parser.PrimitiveType)
 			return fmt.Sprintf("newListSerializer[%s](serialize%s)", pt.Name, capFirst(pt.Name))
 		case "struct":
-			st := lt.ElementType.(*StructType)
+			st := lt.ElementType.(*parser.StructType)
 			return fmt.Sprintf("newListSerializer[%s](serializeStruct[%s])", toPascalCase(st.Name), toPascalCase(st.Name))
 		case "list":
-			nlt := lt.ElementType.(ListType)
+			nlt := lt.ElementType.(parser.ListType)
 			return fmt.Sprintf("newListSerializer[%s](%s)", printType(nlt), printListSerializer(nlt))
 		default:
 			return "unknown"
 	}
 }
 
-func printListDeserializer(lt ListType) string {
+func printListDeserializer(lt parser.ListType) string {
 	switch lt.ElementType.TypeKind() {
 		case "primitive":
-			pt := lt.ElementType.(PrimitiveType)
+			pt := lt.ElementType.(parser.PrimitiveType)
 			return fmt.Sprintf("newListDeserializer[%s](deserialize%s)", pt.Name, capFirst(pt.Name))
 		case "struct":
-			st := lt.ElementType.(*StructType)
+			st := lt.ElementType.(*parser.StructType)
 			return fmt.Sprintf("newListDeserializer[%s](deserializeStruct[%s])", toPascalCase(st.Name), toPascalCase(st.Name))
 		case "list":
-			nlt := lt.ElementType.(ListType)
+			nlt := lt.ElementType.(parser.ListType)
 			return fmt.Sprintf("newListDeserializer[%s](%s)", printType(nlt), printListDeserializer(nlt))
 		default:
 			return "unknown"
 	}
 }
 
-func printStruct(sv StructType) string {
+func printStruct(sv parser.StructType) string {
 	sb := strings.Builder{}
 
 	// print struct
@@ -86,14 +89,14 @@ func printStruct(sv StructType) string {
 
 		switch field.Type.TypeKind() {
 			case "primitive":
-				pt := field.Type.(PrimitiveType)
+				pt := field.Type.(parser.PrimitiveType)
 				sb.WriteString(fmt.Sprintf("\t\tserialize%s(*it.%s, data)\n", capFirst(pt.Name), toPascalCase(field.Name)))
 			case "struct":
 				sb.WriteString(fmt.Sprintf("\t\tserializeStruct(*it.%s, data)\n", toPascalCase(field.Name)))
 			case "list":
 				sb.WriteString(
 					fmt.Sprintf("\t\t%s(*it.%s, data)\n",
-						printListSerializer(field.Type.(ListType)),
+						printListSerializer(field.Type.(parser.ListType)),
 						toPascalCase(field.Name),
 					),
 				)
@@ -111,12 +114,12 @@ func printStruct(sv StructType) string {
 		var name string
 		switch field.Type.TypeKind() {
 			case "primitive":
-				pt := field.Type.(PrimitiveType)
+				pt := field.Type.(parser.PrimitiveType)
 				name = "deserialize" + capFirst(pt.Name)
 			case "struct":
-				name = "deserialize" + "Struct[" + toPascalCase(field.Type.(*StructType).Name) + "]"
+				name = "deserialize" + "Struct[" + toPascalCase(field.Type.(*parser.StructType).Name) + "]"
 			case "list":
-				name = printListDeserializer(field.Type.(ListType))
+				name = printListDeserializer(field.Type.(parser.ListType))
 		}
 		sb.WriteString(
 			fmt.Sprintf(
@@ -134,9 +137,9 @@ func printStruct(sv StructType) string {
 	return sb.String()
 }
 
-func printGo(s Schema) error {
+func Print(s parser.Schema, namespace string) (string, error) {
 	sb := strings.Builder{}
-	sb.WriteString("package schematest\n\n")
+	sb.WriteString(fmt.Sprintf("package %s\n\n", namespace))
 	sb.WriteString("import(\n")
 	sb.WriteString("\t\"bytes\"\n")
 	sb.WriteString("\t\"encoding/binary\"\n")
@@ -174,14 +177,12 @@ func printGo(s Schema) error {
 	sb.WriteString("\t}\n}\n\n")
 
 
-	postlude, err := ReadAfterLine("schema/helpers.go", 9)
+	postlude, err := readAfterLine("schema/gowriter/helpers", 9)
 	if err != nil {
-		return err
+		return "", err
 	}
 	sb.WriteString(postlude)
-
-	os.WriteFile("gen/schema.go", []byte(sb.String()), 0644)
-	return nil
+	return sb.String(), nil
 }
 
 func capFirst(s string) string {
@@ -189,4 +190,61 @@ func capFirst(s string) string {
 		return ""
 	}
 	return strings.ToUpper(string(s[0])) + s[1:]
+}
+
+func toPascalCase(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	var result strings.Builder
+	capitalizeNext := true
+
+	for i, r := range s {
+		if r == '_' || r == '-' || r == ' ' || r == '.' {
+			// Treat these as word separators
+			capitalizeNext = true
+			continue
+		}
+
+		if unicode.IsUpper(r) && i > 0 {
+			// If we encounter an uppercase letter that's not at the start,
+			// it might be camelCase, so capitalize it
+			result.WriteRune(r)
+			capitalizeNext = false
+		} else if capitalizeNext {
+			result.WriteRune(unicode.ToUpper(r))
+			capitalizeNext = false
+		} else {
+			result.WriteRune(unicode.ToLower(r))
+		}
+	}
+
+	return result.String()
+}
+
+func readAfterLine(filename string, lineNum int) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var result strings.Builder
+	currentLine := 0
+
+	for scanner.Scan() {
+		currentLine++
+		if currentLine > lineNum {
+			result.WriteString(scanner.Text())
+			result.WriteString("\n")
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error reading file: %w", err)
+	}
+
+	return result.String(), nil
 }
