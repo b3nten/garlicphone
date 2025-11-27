@@ -1,16 +1,63 @@
 // generated file, do not edit!
 
+export class Player {
+	static get TypeID() { return 49920; }
+	id; 	name; 	inventory; 	idk; 	nested;
+	toBytes() { return this.__serialize(new ByteBuffer()).bytes(); }
+	fromBytes(bytes) {
+		parse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
+		return this;
+	}
+}
+Object.defineProperty(Player, '__deserialize', { value: create_static_deserializer(Player), enumerable: false })
+function Player___serialize(b) {
+	b.write_uint16(49920);
+	const start_index = b.length;
+	b.write_uint32(0);
+	if(this.id !== 'undefined') {
+		b.write_uint16(10);
+		b.write_uint32(this.id);
+	}
+	if(this.name !== 'undefined') {
+		b.write_uint16(11);
+		b.write_string(this.name);
+	}
+	if(this.inventory !== 'undefined') {
+		b.write_uint16(12);
+		b.list_writer(b.write_struct)(this.inventory)
+	}
+	if(this.idk !== 'undefined') {
+		b.write_uint16(13);
+		b.write_struct(this.idk);
+	}
+	if(this.nested !== 'undefined') {
+		b.write_uint16(14);
+		b.list_writer(b.list_writer(b.write_struct))(this.nested)
+	}
+	const end_index = b.length;
+	b.set_uint32(start_index, end_index - (start_index + 4))
+	return b;
+}
+Object.defineProperty(Player.prototype, '__serialize', { value: Player___serialize , enumerable: false })
+function Player___deserialize_field(view, fieldID, offset) {
+	switch(fieldID) {
+		case 10: return deserialize_uint32(view, offset, this, 'id')
+		case 11: return deserialize_string(view, offset, this, 'name')
+		case 12: return list_deserializer(Foo.__deserialize)(view, offset, this, 'inventory')
+		case 13: return Foo.__deserialize(view, offset, this, 'idk')
+		case 14: return list_deserializer(list_deserializer(Foo.__deserialize))(view, offset, this, 'nested')
+		default:
+			return unknown_field;
+	}
+}
+Object.defineProperty(Player.prototype, '__deserialize_field', { value: Player___deserialize_field , enumerable: false })
+
 export class Foo {
 	static get TypeID() { return 32471; }
 	bar;
-
-	toBytes() {
-		return this.__serialize(new ByteBuffer()).bytes();
-	}
-
+	toBytes() { return this.__serialize(new ByteBuffer()).bytes(); }
 	fromBytes(bytes) {
-		const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-		parse_struct(this, view, 0);
+		parse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
 		return this;
 	}
 }
@@ -37,53 +84,15 @@ function Foo___deserialize_field(view, fieldID, offset) {
 }
 Object.defineProperty(Foo.prototype, '__deserialize_field', { value: Foo___deserialize_field , enumerable: false })
 
-export class Player {
-	static get TypeID() { return 49920; }
-	idk; 	nested; 	id; 	name; 	inventory;
-}
-Object.defineProperty(Player, '__deserialize', { value: create_static_deserializer(Player), enumerable: false })
-function Player___serialize(b) {
-	b.write_uint16(49920);
-	const start_index = b.length;
-	b.write_uint32(0);
-	if(this.idk !== 'undefined') {
-		b.write_uint16(10);
-		b.write_struct(this.idk);
-	}
-	if(this.nested !== 'undefined') {
-		b.write_uint16(11);
-		b.list_writer(b.list_writer(b.write_struct))(this.nested)
-	}
-	if(this.id !== 'undefined') {
-		b.write_uint16(12);
-		b.write_uint32(this.id);
-	}
-	if(this.name !== 'undefined') {
-		b.write_uint16(13);
-		b.write_string(this.name);
-	}
-	if(this.inventory !== 'undefined') {
-		b.write_uint16(14);
-		b.list_writer(b.write_struct)(this.inventory)
-	}
-	const end_index = b.length;
-	b.set_uint32(start_index, end_index - (start_index + 4))
-	return b;
-}
-Object.defineProperty(Player.prototype, '__serialize', { value: Player___serialize , enumerable: false })
-function Player___deserialize_field(view, fieldID, offset) {
-	switch(fieldID) {
-		case 10: return Foo.__deserialize(view, offset, this, 'idk')
-		case 11: return list_deserializer(list_deserializer(Foo.__deserialize))(view, offset, this, 'nested')
-		case 12: return deserialize_uint32(view, offset, this, 'id')
-		case 13: return deserialize_string(view, offset, this, 'name')
-		case 14: return list_deserializer(Foo.__deserialize)(view, offset, this, 'inventory')
-		default:
-			return unknown_field;
+export function deserialize(bytes) {
+	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	const typeID = view.getUint16(0);
+	switch(typeID) {
+		case 49920: return new Player().fromBytes(bytes);
+		case 32471: return new Foo().fromBytes(bytes);
+		default: throw new Error(`Unknown TypeID: ${typeID}`);
 	}
 }
-Object.defineProperty(Player.prototype, '__deserialize_field', { value: Player___deserialize_field , enumerable: false })
-
 
 class ByteBuffer {
 	get length() { return this.#len; }
