@@ -11,7 +11,7 @@ import (
 	_ "embed"
 )
 
-//go:embed jswriter/js.lua
+//go:embed js.lua
 var jsTemplater string
 
 func main() {
