@@ -10,9 +10,6 @@ local function to_pascal_case(str)
     return (result:gsub("[^%w]", ""))
 end
 
-local tab = "\t"
-local brk = "\n"
-
 local desField = "__deserialize_field"
 local serField = "__serialize"
 local staticDes = "__deserialize"
@@ -128,7 +125,7 @@ end
 
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % {name = to_pascal_case(struct.name)}
-	out = out .. "\tstatic get TypeID() { ${typeid}; }\n" % {typeid = struct.id}
+	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n" % {typeid = struct.id}
 	for _, field in pairs(struct.fields) do
 		out = out .. "\t${field}; " % {field = field.name}
 	end
