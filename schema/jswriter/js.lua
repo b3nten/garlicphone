@@ -17,13 +17,13 @@ local desField = "__deserializeField"
 local serField = "__serialize"
 local staticDes = "__deserialize"
 
-local function print_list_serializer(field)
-	if field.type.kind == "primitive" then
-		return "buf.write${type}" % {type = field.type.elementType.name}
-	elseif field.type.elementType.kind == "struct" then
+local function print_list_serializer(type)
+	if type.kind == "primitive" then
+		return "buf.write${type}" % {type = type.name}
+	elseif type.kind == "struct" then
 		return "buf.writestruct"
-	elseif field.type.elementType.kind == "list" then
-		return "buf.listwriter(${w})" % {w = print_list_serializer({type = field.type.elementType})}
+	elseif type.kind == "list" then
+		return "buf.listwriter(${w})" % {w = print_list_serializer({type = type.of})}
 	else
 		error("Unknown list element type")
 	end
