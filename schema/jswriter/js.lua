@@ -58,6 +58,23 @@ local function print_str_serializer(struct)
 	return out .. "\t}\n"
 end
 
+local function print_deserializer_fn(field)
+	if field.type.kind == "primitive" then
+		return "deserialize_${type}(data, offset, struct, '${field}')" % {type = field.type.name, field = field.name}
+	elseif field.type.kind == "struct" then
+		return "${stype}.${sdes}(data, offset, struct, '${field}')"
+			% {
+				stype = to_pascal_case(field.type.name),
+				field = field.name,
+				sdes = staticDes
+			}
+	elseif field.type.kind == "list" then
+		return "// unimplemented"
+	else
+		error("Unknown field type")
+	end
+end
+
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % {name = to_pascal_case(struct.name)}
 	out = out .. "\tstatic get TypeID() { ${typeid}; }\n" % {typeid = struct.id}
