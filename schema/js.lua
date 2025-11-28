@@ -133,19 +133,19 @@ end
 
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % { name = to_pascal_case(struct.name) }
-	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n" % { typeid = struct.id }
+	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n\n" % { typeid = struct.id }
 	for _, field in pairs(struct.fields) do
 		out = out .. "\t${field}; " % { field = field.name }
 	end
-	out = out .. "\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }\n"
+	out = out .. "\n\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }\n\n"
 	out = out .. "\tfromBytes(bytes) {\n"
 	out = out .. "\t\tparse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);\n"
 	out = out .. "\t\treturn this;\n"
 	out = out .. "\t}\n"
-	out = out .. "}\n"
-	out = out .. print_static_deserializer(struct)
-	out = out .. print_struct_serializer(struct)
-	out = out .. print_deserializer_switch(struct)
+	out = out .. "}\n\n"
+	out = out .. "\n" .. print_static_deserializer(struct)
+	out = out .. "\n" ..  print_struct_serializer(struct)
+	out = out .. "\n" ..  print_deserializer_switch(struct)
 	return out .. "\n\n"
 end
 
