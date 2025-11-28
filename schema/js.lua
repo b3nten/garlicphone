@@ -147,7 +147,7 @@ local function print_struct(struct)
 	return out .. "\n\n"
 end
 
-function print_deserialize(structs)
+local function print_deserialize(structs)
 	local out = ""
 	out = out .. "export function deserialize(bytes) {"
 	out = out .. "\n\tconst view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);"
@@ -165,17 +165,51 @@ function print_deserialize(structs)
 	return out
 end
 
--- CODEGEN STEP
-
-output = "// generated file, do not edit!\n\n"
-
-for _, v in pairs(structs) do
-	output = output .. print_struct(v)
+local function print_ts_type(type)
+	if type.kind == "primitive" then
+		if type.name == "bool" then
+			return "boolean"
+		elseif type.name == "string" then
+			return "string"
+		else
+			return "number"
+		end
+	elseif type.kind == "struct" then
+		return to_pascal_case(type.name)
+	elseif type.kind == "list" then
+		return print_ts_type(type.of) .. "[]"
+	else
+		error("Unknown type for TS defs")
+	end
 end
 
-output = output .. print_deserialize(structs)
+local function print_ts_defs(structs)
+	local out = ""
+	for _, struct in pairs(structs) do
+		out = out .. "export class ${sname} {\n" % { sname = to_pascal_case(struct.name) }
+		for _, field in pairs(struct.fields) do
+			out = out .. "\t${field}?: ${type};\n" % {
+				field = field.name,
+				type = print_ts_type(field.type)
+			}
+		end
+		out = out .. "}\n\n"
+	end
+	return out
+end
 
--- APPEND INCLDUES AND SET OUTPUT
+-- CODEGEN STEP
+
+local js_file = "// generated file, do not edit!\n\n"
+
+print(Schema.name)
+for _, v in pairs(Schema.structs) do
+	js_file = js_file .. print_struct(v)
+end
+
+js_file = js_file .. print_deserialize(Schema.structs)
+
+-- APPEND INCLDUES AND SET js_file
 local include = [[
 class ByteBuffer {
 	get length() { return this.#len; }
@@ -367,4 +401,9 @@ function create_static_deserializer(cls) {
 const unknown_field = new Error("Unknown Field")
 ]]
 
-output = output .. "\n" .. include .. "\n"
+js_file = js_file .. "\n" .. include .. "\n"
+
+output = {}
+
+output[Schema.name .. ".js"] = js_file
+output[Schema.name .. ".d.ts"] = print_ts_defs(Schema.structs)

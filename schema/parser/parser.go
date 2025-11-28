@@ -40,13 +40,15 @@ type ListType struct {
 func (l ListType) TypeKind() string { return "list" }
 
 type Schema struct {
+	Name string
+	Version int
 	Structs []StructType
 }
 
-func GenerateSchema(file string) (Schema, error) {
+func GenerateSchema(file string) (*Schema, error) {
 	bytes, err := os.ReadFile(file)
 	if err != nil {
-		return Schema{}, err
+		return &Schema{}, err
 	}
 
 	L := lua.NewState()
@@ -100,7 +102,23 @@ func GenerateSchema(file string) (Schema, error) {
 		structList = append(structList, *sl)
 	}
 
-	return Schema{structList}, nil
+	// get file name without extension or base path
+	fileName := file
+	if stat, err := os.Stat(file); err == nil {
+		fileName = stat.Name()
+	}
+	extIndex := -1
+	for i := len(fileName) - 1; i >= 0; i-- {
+		if fileName[i] == '.' {
+			extIndex = i
+			break
+		}
+	}
+	if extIndex != -1 {
+		fileName = fileName[:extIndex]
+	}
+
+	return &Schema{fileName, 1, structList}, nil
 }
 
 func generateTypeTable(L *lua.LState, lt Type) *lua.LTable {
@@ -126,10 +144,17 @@ func generateTypeTable(L *lua.LState, lt Type) *lua.LTable {
 	return tbl
 }
 
-func createLuaState(s Schema) *lua.LState {
+func CreateLuaState(s *Schema) *lua.LState {
 	// create state from schema so lua files can generate code
 	L := lua.NewState()
+	// set schema properties
 	schema := L.NewTable()
+	schema.RawSet(lua.LString("name"), lua.LString(s.Name))
+	schema.RawSet(lua.LString("version"), lua.LNumber(s.Version))
+
+	structsTable := L.NewTable()
+
+	// set structs
 	for _, s := range s.Structs {
 		structTable := L.NewTable()
 
@@ -155,24 +180,13 @@ func createLuaState(s Schema) *lua.LState {
 		}
 		// assign fields to struct
 		structTable.RawSet(lua.LString("fields"), fieldsTable)
-		// assign struct to schema
-		schema.RawSet(lua.LString(s.Name), structTable)
+		// assign struct to structs table
+		structsTable.RawSet(lua.LString(s.Name), structTable)
 	}
-	L.SetGlobal("structs", schema)
-	return L
-}
 
-func RunLuaCodegen(s Schema, script string) (string, error) {
-	L := createLuaState(s)
-	defer L.Close()
-	if err := L.DoString(script); err != nil {
-		return "", err
-	}
-	result := L.GetGlobal("output")
-	if str, ok := result.(lua.LString); ok {
-		return string(str), nil
-	}
-	return "", nil
+	schema.RawSet(lua.LString("structs"), structsTable)
+	L.SetGlobal("Schema", schema)
+	return L
 }
 
 func mapType(tbl *lua.LTable, structs map[string]*StructType) Type {

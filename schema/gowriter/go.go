@@ -137,7 +137,7 @@ func printStruct(sv parser.StructType) string {
 	return sb.String()
 }
 
-func Print(s parser.Schema, namespace string) (string, error) {
+func Print(s *parser.Schema, namespace string) (string, error) {
 	sb := strings.Builder{}
 	sb.WriteString(fmt.Sprintf("package %s\n\n", namespace))
 	sb.WriteString("import(\n")
