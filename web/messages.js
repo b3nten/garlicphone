@@ -13,27 +13,27 @@ function Player_serialize(it, b) {
 	write_uint16(49920, b);
 	const start_index = b.length;
 	write_uint32(0, b);
-	if(typeof it.id !== 'undefined') {
+	if (typeof it.id !== 'undefined') {
 		write_uint16(10, b);
 		write_uint32(it.id, b);
 	}
-	if(typeof it.name !== 'undefined') {
+	if (typeof it.name !== 'undefined') {
 		write_uint16(11, b);
 		write_string(it.name, b);
 	}
-	if(typeof it.inventory !== 'undefined') {
+	if (typeof it.inventory !== 'undefined') {
 		write_uint16(12, b);
 		lw1(it.inventory, b)
 	}
-	if(typeof it.foo !== 'undefined') {
+	if (typeof it.foo !== 'undefined') {
 		write_uint16(13, b);
 		write_string(it.foo, b);
 	}
-	if(typeof it.dead !== 'undefined') {
+	if (typeof it.dead !== 'undefined') {
 		write_uint16(14, b);
 		write_bool(it.dead, b);
 	}
-	if(typeof it.lol !== 'undefined') {
+	if (typeof it.lol !== 'undefined') {
 		write_uint16(15, b);
 		lw2(it.lol, b)
 	}
@@ -41,13 +41,14 @@ function Player_serialize(it, b) {
 	b.set_uint32(start_index, end_index - (start_index + 4))
 	return b;
 }
-function Player_deserialize(view, offset, struct, field){
+function Player_deserialize(view, offset, struct, field) {
 	const s = new Player();
 	offset = parse_struct(s, Player_deserialize_field, view, offset);
 	struct[field] = s;
-	return offset;}
+	return offset;
+}
 function Player_deserialize_field(it, view, fieldID, offset) {
-	switch(fieldID) {
+	switch (fieldID) {
 		case 10: return deserialize_uint32(view, offset, it, 'id')
 		case 11: return deserialize_string(view, offset, it, 'name')
 		case 12: return ld1(view, offset, it, 'inventory')
@@ -73,7 +74,7 @@ function Item_serialize(it, b) {
 	write_uint16(13286, b);
 	const start_index = b.length;
 	write_uint32(0, b);
-	if(typeof it.name !== 'undefined') {
+	if (typeof it.name !== 'undefined') {
 		write_uint16(1, b);
 		write_string(it.name, b);
 	}
@@ -81,13 +82,14 @@ function Item_serialize(it, b) {
 	b.set_uint32(start_index, end_index - (start_index + 4))
 	return b;
 }
-function Item_deserialize(view, offset, struct, field){
+function Item_deserialize(view, offset, struct, field) {
 	const s = new Item();
 	offset = parse_struct(s, Item_deserialize_field, view, offset);
 	struct[field] = s;
-	return offset;}
+	return offset;
+}
 function Item_deserialize_field(it, view, fieldID, offset) {
-	switch(fieldID) {
+	switch (fieldID) {
 		case 1: return deserialize_string(view, offset, it, 'name')
 		default:
 			return unknown_field;
@@ -99,7 +101,7 @@ export function deserialize(bytes) {
 	if (!('buffer' in bytes)) bytes = new Uint8Array(bytes);
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	const typeID = view.getUint16(0);
-	switch(typeID) {
+	switch (typeID) {
 		case 49920: return new Player().fromBytes(bytes);
 		case 13286: return new Item().fromBytes(bytes);
 		default: throw new Error(`Unknown TypeID: ${typeID}`);
@@ -375,4 +377,3 @@ function parse_struct(struct, field_method, view, offset) {
 }
 
 const unknown_field = new Error("Unknown Field")
-
