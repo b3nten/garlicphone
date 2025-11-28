@@ -1,8 +1,8 @@
-// generated file, do not edit!
+// Auto-generated code for schema: messages v1
 
 export class Player {
 	static get TypeID() { return 49920; }
-	idk; 	nested; 	id; 	name; 	inventory; 
+	id; 	name; 	inventory; 	idk; 	nested; 
 	toBytes() { return this.__serialize(new ByteBuffer()).bytes(); }
 	fromBytes(bytes) {
 		parse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
@@ -14,25 +14,25 @@ function Player___serialize(b) {
 	b.write_uint16(49920);
 	const start_index = b.length;
 	b.write_uint32(0);
-	if(this.idk !== 'undefined') {
-		b.write_uint16(10);
-		b.write_struct(this.idk);
-	}
-	if(this.nested !== 'undefined') {
-		b.write_uint16(11);
-		b.list_writer(b.list_writer(b.write_struct))(this.nested)
-	}
 	if(this.id !== 'undefined') {
-		b.write_uint16(12);
+		b.write_uint16(10);
 		b.write_uint32(this.id);
 	}
 	if(this.name !== 'undefined') {
-		b.write_uint16(13);
+		b.write_uint16(11);
 		b.write_string(this.name);
 	}
 	if(this.inventory !== 'undefined') {
-		b.write_uint16(14);
+		b.write_uint16(12);
 		b.list_writer(b.write_struct)(this.inventory)
+	}
+	if(this.idk !== 'undefined') {
+		b.write_uint16(13);
+		b.write_struct(this.idk);
+	}
+	if(this.nested !== 'undefined') {
+		b.write_uint16(14);
+		b.list_writer(b.list_writer(b.write_struct))(this.nested)
 	}
 	const end_index = b.length;
 	b.set_uint32(start_index, end_index - (start_index + 4))
@@ -41,11 +41,11 @@ function Player___serialize(b) {
 Object.defineProperty(Player.prototype, '__serialize', { value: Player___serialize , enumerable: false })
 function Player___deserialize_field(view, fieldID, offset) {
 	switch(fieldID) {
-		case 10: return Foo.__deserialize(view, offset, this, 'idk')
-		case 11: return list_deserializer(list_deserializer(Foo.__deserialize))(view, offset, this, 'nested')
-		case 12: return deserialize_uint32(view, offset, this, 'id')
-		case 13: return deserialize_string(view, offset, this, 'name')
-		case 14: return list_deserializer(Foo.__deserialize)(view, offset, this, 'inventory')
+		case 10: return deserialize_uint32(view, offset, this, 'id')
+		case 11: return deserialize_string(view, offset, this, 'name')
+		case 12: return list_deserializer(Foo.__deserialize)(view, offset, this, 'inventory')
+		case 13: return Foo.__deserialize(view, offset, this, 'idk')
+		case 14: return list_deserializer(list_deserializer(Foo.__deserialize))(view, offset, this, 'nested')
 		default:
 			return unknown_field;
 	}
@@ -67,7 +67,7 @@ function Foo___serialize(b) {
 	const start_index = b.length;
 	b.write_uint32(0);
 	if(this.bar !== 'undefined') {
-		b.write_uint16(10);
+		b.write_uint16(2);
 		b.write_int32(this.bar);
 	}
 	const end_index = b.length;
@@ -77,7 +77,7 @@ function Foo___serialize(b) {
 Object.defineProperty(Foo.prototype, '__serialize', { value: Foo___serialize , enumerable: false })
 function Foo___deserialize_field(view, fieldID, offset) {
 	switch(fieldID) {
-		case 10: return deserialize_int32(view, offset, this, 'bar')
+		case 2: return deserialize_int32(view, offset, this, 'bar')
 		default:
 			return unknown_field;
 	}

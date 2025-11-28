@@ -1,11 +1,11 @@
 package main
 
 import (
+	"6enten/garlicphone/messages"
 	"fmt"
 	"net/http"
 
 	"github.com/lesismal/nbio/nbhttp/websocket"
-	"6enten/garlicphone/gen"
 )
 
 var fs = http.FileServer(http.Dir("./web"))
@@ -39,36 +39,46 @@ func onWebsocket(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upgraded:", conn.RemoteAddr().String())
 }
 
-func testSchema() {
-	player := schematest.Player{
-		Name: schematest.Ptr("Benny"),
-		Nested: &[][]schematest.Foo{
+func sendBinary(mux *http.ServeMux) {
+	player := &messages.Player{
+		Id:   messages.Ptr(uint32(12345)),
+		Name: messages.Ptr("PlayerOne"),
+		Idk:  &messages.Foo{
+			Bar: messages.Ptr(int32(123)),
+		},
+		Inventory: &[]messages.Foo{
+			{ Bar: messages.Ptr(int32(1)) },
+			{ Bar: messages.Ptr(int32(2)) },
+		},
+		Nested: &[][]messages.Foo{
 			{
 				{
-					Bar: schematest.Ptr(int32(123)),
+					Bar: messages.Ptr(int32(10)),
 				},
 			},
 		},
 	}
+	bytes, err := messages.MarshalBinary(player)
 
-	data, err := schematest.Serialize(&player)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Serialized player to binary", bytes)
 
-	fmt.Println("Serialized data:", data, "err:", err)
-
-	newPlayer := &schematest.Player{}
-	err = schematest.Deserialize(data, newPlayer)
-	fmt.Println("Deserialized player:", *newPlayer.Name, *(*newPlayer.Nested)[0][0].Bar, "err:", err)
+	mux.HandleFunc("/binary", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(bytes)
+	})
 }
 
 func main() {
-	testSchema()
-	return
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/ws", onWebsocket)
 	mux.HandleFunc("/", fs.ServeHTTP)
 	mux.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
 		http.StripPrefix("/static/", http.HandlerFunc(fs.ServeHTTP)).ServeHTTP(w, r)
 	})
+	sendBinary(mux)
 	server := http.Server{
 		Addr:    "localhost:8000",
 		Handler: mux,

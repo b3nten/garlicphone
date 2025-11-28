@@ -1,3 +1,5 @@
+Schema = Schema
+
 local function fmt(s, tab)
 	return (s:gsub('($%b{})', function(w) return tab[w:sub(3, -2)] or w end))
 end
@@ -193,21 +195,31 @@ local function print_ts_defs(structs)
 				type = print_ts_type(field.type)
 			}
 		end
+		out = out .. "\n\tstatic readonly TypeID: number;\n"
+		out = out .. "\ttoBytes(): Uint8Array;\n"
+		out = out .. "\tfromBytes(bytes: ArrayBufferView): ${sname};\n" % { sname = to_pascal_case(struct.name) }
 		out = out .. "}\n\n"
 	end
 	return out
 end
 
+local function print_prelude(name, version)
+	local out = "// Auto-generated code for schema: ${name} v${version}\n\n" % {
+		name = name,
+		version = version
+	}
+	return out
+end
+
 -- CODEGEN STEP
 
-local js_file = "// generated file, do not edit!\n\n"
-
-print(Schema.name)
+local js_file = print_prelude(Schema.name, Schema.version)
 for _, v in pairs(Schema.structs) do
 	js_file = js_file .. print_struct(v)
 end
-
 js_file = js_file .. print_deserialize(Schema.structs)
+
+local ts_file = print_prelude(Schema.name, Schema.version) .. print_ts_defs(Schema.structs)
 
 -- APPEND INCLDUES AND SET js_file
 local include = [[
@@ -401,9 +413,7 @@ function create_static_deserializer(cls) {
 const unknown_field = new Error("Unknown Field")
 ]]
 
-js_file = js_file .. "\n" .. include .. "\n"
+Output = {}
 
-output = {}
-
-output[Schema.name .. ".js"] = js_file
-output[Schema.name .. ".d.ts"] = print_ts_defs(Schema.structs)
+Output[Schema.name .. ".js"] = js_file .. "\n" .. include .. "\n"
+Output[Schema.name .. ".d.ts"] = ts_file

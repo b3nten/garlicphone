@@ -9,7 +9,7 @@ tmp_dir = "tmp"
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ."
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "web"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "web", "messages"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
@@ -23,7 +23,10 @@ tmp_dir = "tmp"
   poll = false
   poll_interval = 0
   post_cmd = []
-  pre_cmd = []
+  pre_cmd = [
+  	"go run schema/*.go -i messages.sch -o messages -lang go",
+   	"go run schema/*.go -i messages.sch -o web -lang js"
+  ]
   rerun = false
   rerun_delay = 500
   send_interrupt = false

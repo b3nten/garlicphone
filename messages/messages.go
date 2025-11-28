@@ -1,11 +1,105 @@
-package helpers
+// Auto-generated code for schema: messages v1
 
-import (
+package messages
+
+import(
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 )
+
+type Foo struct { 
+	 Bar *int32
+}
+func (Foo) TypeID() uint16 { return uint16(32471) }
+func (it Foo) toBytes(data *bytes.Buffer) {
+	serializeUint16(32471, data)
+	startLenPos := data.Len()
+	serializeUint32(0, data)
+	if it.Bar != nil {
+		serializeUint16(2, data)
+		serializeInt32(*it.Bar, data)
+	}
+	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
+}
+func (it *Foo) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
+	switch fieldIndex {
+	case 0: val, len, err := deserializeInt32(data, offset); it.Bar = &val; return len, err
+	}
+	return 0, UnknownFieldError
+}
+
+type Player struct { 
+	 Id *uint32
+	 Name *string
+	 Inventory *[]Foo
+	 Idk *Foo
+	 Nested *[][]Foo
+}
+func (Player) TypeID() uint16 { return uint16(49920) }
+func (it Player) toBytes(data *bytes.Buffer) {
+	serializeUint16(49920, data)
+	startLenPos := data.Len()
+	serializeUint32(0, data)
+	if it.Id != nil {
+		serializeUint16(10, data)
+		serializeUint32(*it.Id, data)
+	}
+	if it.Name != nil {
+		serializeUint16(11, data)
+		serializeString(*it.Name, data)
+	}
+	if it.Inventory != nil {
+		serializeUint16(12, data)
+		newListSerializer[Foo](serializeStruct[Foo])(*it.Inventory, data)
+	}
+	if it.Idk != nil {
+		serializeUint16(13, data)
+		serializeStruct(*it.Idk, data)
+	}
+	if it.Nested != nil {
+		serializeUint16(14, data)
+		newListSerializer[[]Foo](newListSerializer[Foo](serializeStruct[Foo]))(*it.Nested, data)
+	}
+	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
+}
+func (it *Player) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
+	switch fieldIndex {
+	case 0: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
+	case 1: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
+	case 2: val, len, err := newListDeserializer[Foo](deserializeStruct[Foo])(data, offset); it.Inventory = &val; return len, err
+	case 3: val, len, err := deserializeStruct[Foo](data, offset); it.Idk = &val; return len, err
+	case 4: val, len, err := newListDeserializer[[]Foo](newListDeserializer[Foo](deserializeStruct[Foo]))(data, offset); it.Nested = &val; return len, err
+	}
+	return 0, UnknownFieldError
+}
+
+func UnmarshalBinary[K any, KT interface {*K; Serializable}](b []byte, out KT) error {
+	if len(b) < idSize+lenSize { return fmt.Errorf("data too short to contain message header") }
+	typeID := uint16(binary.BigEndian.Uint16(b[0:idSize]))
+	if out.TypeID() != typeID { return fmt.Errorf("type ID mismatch: expected %d, got %d", out.TypeID(), typeID) }
+	switch v := any(out).(type) {
+	case *Foo: _, err := parse(v.fromBytes, b); return err
+	case *Player: _, err := parse(v.fromBytes, b); return err
+	default: return fmt.Errorf("unsupported type for deserialization")
+	}
+}
+
+func deserializeStruct[K Serializable](data []byte, offset int) (K, int, error) {
+	var val K
+	slice := data[offset:]
+	switch v := any(val).(type) {
+	case Foo:
+		i, err := parse(v.fromBytes, slice)
+		return any(v).(K), i, err
+	case Player:
+		i, err := parse(v.fromBytes, slice)
+		return any(v).(K), i, err
+	default:
+		return val, 0, fmt.Errorf("unsupported struct type for deserialization")
+	}
+}
 
 type Serializable interface {
 	TypeID() uint16

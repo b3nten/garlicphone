@@ -83,9 +83,9 @@ func printStruct(sv parser.StructType) string {
 	sb.WriteString(fmt.Sprintf("\tserializeUint16(%d, data)\n", sv.ID))
 	sb.WriteString("\tstartLenPos := data.Len()\n")
 	sb.WriteString("\tserializeUint32(0, data)\n")
-	for i, field := range sv.Fields {
+	for _, field := range sv.Fields {
 		sb.WriteString(fmt.Sprintf("\tif it.%s != nil {\n", toPascalCase(field.Name)))
-		sb.WriteString(fmt.Sprintf("\t\tserializeUint16(%d, data)\n", i))
+		sb.WriteString(fmt.Sprintf("\t\tserializeUint16(%d, data)\n", field.ID))
 
 		switch field.Type.TypeKind() {
 			case "primitive":
@@ -139,6 +139,7 @@ func printStruct(sv parser.StructType) string {
 
 func Print(s *parser.Schema, namespace string) (string, error) {
 	sb := strings.Builder{}
+	sb.WriteString(fmt.Sprintf("// Auto-generated code for schema: %s v%d\n\n", s.Name, s.Version))
 	sb.WriteString(fmt.Sprintf("package %s\n\n", namespace))
 	sb.WriteString("import(\n")
 	sb.WriteString("\t\"bytes\"\n")
@@ -152,7 +153,7 @@ func Print(s *parser.Schema, namespace string) (string, error) {
 	}
 
 	// Deserialize function
-	sb.WriteString("func Deserialize[K any, KT interface {*K; Serializable}](b []byte, out KT) error {\n")
+	sb.WriteString("func UnmarshalBinary[K any, KT interface {*K; Serializable}](b []byte, out KT) error {\n")
 	sb.WriteString("\tif len(b) < idSize+lenSize { return fmt.Errorf(\"data too short to contain message header\") }\n")
 	sb.WriteString("\ttypeID := uint16(binary.BigEndian.Uint16(b[0:idSize]))\n")
 	sb.WriteString("\tif out.TypeID() != typeID { return fmt.Errorf(\"type ID mismatch: expected %d, got %d\", out.TypeID(), typeID) }\n")

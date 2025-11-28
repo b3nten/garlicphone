@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"hash/fnv"
 	"os"
+	"path/filepath"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -54,7 +56,7 @@ func GenerateSchema(file string) (*Schema, error) {
 	L := lua.NewState()
 	defer L.Close()
 
-	if err := L.DoString(string(bytes)); err != nil {
+	if err := L.DoString(prelude + "\n" + string(bytes)); err != nil {
 		panic(err)
 	}
 
@@ -80,21 +82,38 @@ func GenerateSchema(file string) (*Schema, error) {
 		// gather all fields in structs
 		for _, lstruct := range lstructs {
 			if fields, ok := lstruct.RawGet(lua.LString("fields")).(*lua.LTable); ok {
-				i := 10
 				fields.ForEach(func(key lua.LValue, value lua.LValue) {
 					if fieldTbl, ok := value.(*lua.LTable); ok {
 						sv := ltos[lstruct]
 						typ := mapType(fieldTbl, structs)
+						metadata := fieldTbl.RawGet(lua.LString("metadata"))
+						if metadata == lua.LNil {
+							panic("field " + key.String() + " is missing metadata. You probably forget to set an ID")
+						}
+						id := metadata.(*lua.LTable).RawGet(lua.LString("id"))
+						if id == lua.LNil {
+							panic("field " + key.String() + " is missing an ID in metadata")
+						}
+						i, ok := id.(lua.LNumber)
+						if !ok {
+							panic("field " + key.String() + " has a non-numeric ID in metadata")
+						}
+						fmt.Printf("Mapped field %s with ID %d and type %T\n", key.String(), int(i), typ)
 						sv.Fields = append(sv.Fields, Field{
 							ID:   uint16(i),
 							Name: key.String(),
 							Type: typ,
 						})
-						i++
 					}
 				})
 			}
 		}
+	}
+
+	// get version global
+	version := 1
+	if v := L.GetGlobal("version"); v.Type() == lua.LTNumber {
+		version = int(v.(lua.LNumber))
 	}
 
 	structList := []StructType{}
@@ -102,23 +121,7 @@ func GenerateSchema(file string) (*Schema, error) {
 		structList = append(structList, *sl)
 	}
 
-	// get file name without extension or base path
-	fileName := file
-	if stat, err := os.Stat(file); err == nil {
-		fileName = stat.Name()
-	}
-	extIndex := -1
-	for i := len(fileName) - 1; i >= 0; i-- {
-		if fileName[i] == '.' {
-			extIndex = i
-			break
-		}
-	}
-	if extIndex != -1 {
-		fileName = fileName[:extIndex]
-	}
-
-	return &Schema{fileName, 1, structList}, nil
+	return &Schema{getFileNameFromPath(file), version, structList}, nil
 }
 
 func generateTypeTable(L *lua.LState, lt Type) *lua.LTable {
@@ -209,3 +212,71 @@ func fnv32a(text string) uint32 {
 	algorithm.Write([]byte(text))
 	return algorithm.Sum32()
 }
+
+func getFileNameFromPath(path string) string {
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	return strings.TrimSuffix(base, ext)
+}
+
+var prelude = `
+local function uuid()
+    local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    return string.gsub(template, '[xy]', function (c)
+        local v = (c == 'x') and math.random(0, 0xf) or math.random(8, 0xb)
+        return string.format('%x', v)
+    end)
+end
+
+-- Helper to make a type callable for metadata
+local function make_type(base_type)
+    return setmetatable(base_type, {
+        __call = function(self, metadata)
+            local result = {}
+            for k, v in pairs(self) do
+                result[k] = v
+            end
+            result.metadata = metadata
+            return result
+        end
+    })
+end
+
+-- Primitives
+bool = make_type({ type = "primitive", name = "bool" })
+int8 = make_type({ type = "primitive", name = "int8" })
+uint8 = make_type({ type = "primitive", name = "uint8" })
+int16 = make_type({ type = "primitive", name = "int16" })
+uint16 = make_type({ type = "primitive", name = "uint16" })
+int32 = make_type({ type = "primitive", name = "int32" })
+uint32 = make_type({ type = "primitive", name = "uint32" })
+int64 = make_type({ type = "primitive", name = "int64" })
+uint64 = make_type({ type = "primitive", name = "uint64" })
+str = make_type({ type = "primitive", name = "string" })
+
+function struct(fields)
+    local s = {
+        type = "struct",
+        fields = fields,
+        uuid = uuid(),
+    }
+    return setmetatable(s, {
+        __call = function(self, metadata)
+            local result = {}
+            for k, v in pairs(self) do
+                result[k] = v
+            end
+            result.metadata = metadata
+            return result
+        end
+    })
+end
+
+function list(type)
+    return make_type({type = "list", of = type})
+end
+
+function map(keyType, valueType)
+    return make_type({type = "map", key = keyType, value = valueType})
+end
+`

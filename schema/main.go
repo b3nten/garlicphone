@@ -104,11 +104,11 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Successfully generated schema")
+	fmt.Println("Successfully generated schema", getFileNameFromPath(file.input), "to", *outputFlag)
 }
 
 func generateGoCode(file *SchemaFile) error {
-	namespace := "schema"
+	namespace := getFileNameFromPath(file.input)
 	code, err := gowriter.Print(file.schema, namespace)
 	if err != nil {
 		return err
@@ -127,11 +127,17 @@ func generateWithLuaTemplate(file *SchemaFile, templater string) error {
 	if err := L.DoString(templater); err != nil {
 		return err
 	}
-	result := L.GetGlobal("output")
+	result := L.GetGlobal("Output")
 	if tbl, ok := result.(*lua.LTable); ok {
 		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
 			file.generated[key.String()] = value.String()
 		})
 	}
 	return nil
+}
+
+func getFileNameFromPath(path string) string {
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	return strings.TrimSuffix(base, ext)
 }
