@@ -134,9 +134,6 @@ end
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % { name = to_pascal_case(struct.name) }
 	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n" % { typeid = struct.id }
-	for _, field in pairs(struct.fields) do
-		out = out .. "\t${field}; " % { field = field.name }
-	end
 	out = out .. "\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }"
 	out = out .. "\n\tfromBytes(bytes) {"
 	out = out .. "\n\t\tif (!('buffer' in bytes)) bytes = new Uint8Array(bytes);"
