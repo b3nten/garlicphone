@@ -4,6 +4,9 @@ export class Player {
 	id?: number;
 	name?: string;
 	inventory?: Item[];
+	foo?: string;
+	dead?: boolean;
+	lol?: number[][];
 
 	static readonly TypeID: number;
 	toBytes(): Uint8Array;

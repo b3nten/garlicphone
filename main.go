@@ -48,12 +48,15 @@ func sendBinary(mux *http.ServeMux) {
 			{ Name: messages.Ptr("Sword") },
 		},
 	}
+	for i := 0; i < 1000; i++ {
+		*player.Inventory = append(*player.Inventory, messages.Item{ Name: messages.Ptr(fmt.Sprintf("Item%d", i)) })
+	}
 	bytes, err := messages.MarshalBinary(player)
 
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Serialized player to binary", bytes)
+	// fmt.Println("Serialized player to binary", bytes)
 
 	mux.HandleFunc("/binary", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
