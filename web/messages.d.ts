@@ -3,20 +3,20 @@
 export class Player {
 	id?: number;
 	name?: string;
-	inventory?: Foo[];
-	idk?: Foo;
-	nested?: Foo[][];
+	inventory?: Item[];
 
 	static readonly TypeID: number;
 	toBytes(): Uint8Array;
-	fromBytes(bytes: ArrayBufferView): Player;
+	fromBytes(bytes: ArrayBuffer | ArrayBufferView): Player;
 }
 
-export class Foo {
-	bar?: number;
+export class Item {
+	name?: string;
 
 	static readonly TypeID: number;
 	toBytes(): Uint8Array;
-	fromBytes(bytes: ArrayBufferView): Foo;
+	fromBytes(bytes: ArrayBuffer | ArrayBufferView): Item;
 }
+
+export function deserialize(bytes: ArrayBuffer | ArrayBufferView): Player | Item;
 

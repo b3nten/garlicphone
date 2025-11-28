@@ -1,5 +1,5 @@
 import { Renderable, html, css } from "./component.js";
-import { Player } from "./messages.js";
+import { deserialize } from "./messages.js";
 
 class AppEntry extends Renderable {
 	static styles = css`
@@ -16,6 +16,5 @@ class AppEntry extends Renderable {
 AppEntry.define()
 
 fetch("/binary").then(x => x.arrayBuffer()).then(buffer => {
-	console.log(new Uint8Array(buffer))
-	console.log(new Player().fromBytes(new Uint8Array(buffer)))
+	console.log(deserialize(buffer))
 });

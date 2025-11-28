@@ -133,25 +133,27 @@ end
 
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % { name = to_pascal_case(struct.name) }
-	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n\n" % { typeid = struct.id }
+	out = out .. "\tstatic get TypeID() { return ${typeid}; }\n" % { typeid = struct.id }
 	for _, field in pairs(struct.fields) do
 		out = out .. "\t${field}; " % { field = field.name }
 	end
-	out = out .. "\n\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }\n\n"
-	out = out .. "\tfromBytes(bytes) {\n"
-	out = out .. "\t\tparse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);\n"
+	out = out .. "\n\ttoBytes() { return this.__serialize(new ByteBuffer()).bytes(); }"
+	out = out .. "\n\tfromBytes(bytes) {"
+	out = out .. "\n\t\tif (!('buffer' in bytes)) bytes = new Uint8Array(bytes);"
+	out = out .. "\n\t\tparse_struct(this, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);\n"
 	out = out .. "\t\treturn this;\n"
 	out = out .. "\t}\n"
-	out = out .. "}\n\n"
-	out = out .. "\n" .. print_static_deserializer(struct)
-	out = out .. "\n" ..  print_struct_serializer(struct)
-	out = out .. "\n" ..  print_deserializer_switch(struct)
+	out = out .. "}\n"
+	out = out .. print_static_deserializer(struct)
+	out = out .. print_struct_serializer(struct)
+	out = out .. print_deserializer_switch(struct)
 	return out .. "\n\n"
 end
 
 local function print_deserialize(structs)
 	local out = ""
 	out = out .. "export function deserialize(bytes) {"
+	out = out .. "\n\tif (!('buffer' in bytes)) bytes = new Uint8Array(bytes);"
 	out = out .. "\n\tconst view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);"
 	out = out .. "\n\tconst typeID = view.getUint16(0);"
 	out = out .. "\n\tswitch(typeID) {"
@@ -197,9 +199,14 @@ local function print_ts_defs(structs)
 		end
 		out = out .. "\n\tstatic readonly TypeID: number;\n"
 		out = out .. "\ttoBytes(): Uint8Array;\n"
-		out = out .. "\tfromBytes(bytes: ArrayBufferView): ${sname};\n" % { sname = to_pascal_case(struct.name) }
+		out = out .. "\tfromBytes(bytes: ArrayBuffer | ArrayBufferView): ${sname};\n" % { sname = to_pascal_case(struct.name) }
 		out = out .. "}\n\n"
 	end
+	out = out .. "export function deserialize(bytes: ArrayBuffer | ArrayBufferView): "
+	for _, struct in pairs(structs) do
+		out = out .. "${sname} | " % { sname = to_pascal_case(struct.name) }
+	end
+	out = out:sub(1, -4) .. ";\n\n"
 	return out
 end
 

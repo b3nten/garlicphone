@@ -43,19 +43,9 @@ func sendBinary(mux *http.ServeMux) {
 	player := &messages.Player{
 		Id:   messages.Ptr(uint32(12345)),
 		Name: messages.Ptr("PlayerOne"),
-		Idk:  &messages.Foo{
-			Bar: messages.Ptr(int32(123)),
-		},
-		Inventory: &[]messages.Foo{
-			{ Bar: messages.Ptr(int32(1)) },
-			{ Bar: messages.Ptr(int32(2)) },
-		},
-		Nested: &[][]messages.Foo{
-			{
-				{
-					Bar: messages.Ptr(int32(10)),
-				},
-			},
+		Inventory: &[]messages.Item{
+			{ Name: messages.Ptr("Hammer") },
+			{ Name: messages.Ptr("Sword") },
 		},
 	}
 	bytes, err := messages.MarshalBinary(player)
