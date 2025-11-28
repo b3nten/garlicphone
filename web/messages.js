@@ -1,68 +1,8 @@
 // Auto-generated code for schema: messages v1
 
-export class Player {
-	static get TypeID() { return 49920; }
-	toBytes() { return Player_serialize(this, new ByteBuffer()).bytes(); }
-	fromBytes(bytes) {
-		if (!('buffer' in bytes)) bytes = new Uint8Array(bytes);
-		parse_struct(this, Player_deserialize_field, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
-		return this;
-	}
-}
-function Player_serialize(it, b) {
-	write_uint16(49920, b);
-	const start_index = b.length;
-	write_uint32(0, b);
-	if (typeof it.id !== 'undefined') {
-		write_uint16(10, b);
-		write_uint32(it.id, b);
-	}
-	if (typeof it.name !== 'undefined') {
-		write_uint16(11, b);
-		write_string(it.name, b);
-	}
-	if (typeof it.inventory !== 'undefined') {
-		write_uint16(12, b);
-		lw1(it.inventory, b)
-	}
-	if (typeof it.foo !== 'undefined') {
-		write_uint16(13, b);
-		write_string(it.foo, b);
-	}
-	if (typeof it.dead !== 'undefined') {
-		write_uint16(14, b);
-		write_bool(it.dead, b);
-	}
-	if (typeof it.lol !== 'undefined') {
-		write_uint16(15, b);
-		lw2(it.lol, b)
-	}
-	const end_index = b.length;
-	b.set_uint32(start_index, end_index - (start_index + 4))
-	return b;
-}
-function Player_deserialize(view, offset, struct, field) {
-	const s = new Player();
-	offset = parse_struct(s, Player_deserialize_field, view, offset);
-	struct[field] = s;
-	return offset;
-}
-function Player_deserialize_field(it, view, fieldID, offset) {
-	switch (fieldID) {
-		case 10: return deserialize_uint32(view, offset, it, 'id')
-		case 11: return deserialize_string(view, offset, it, 'name')
-		case 12: return ld1(view, offset, it, 'inventory')
-		case 13: return deserialize_string(view, offset, it, 'foo')
-		case 14: return deserialize_bool(view, offset, it, 'dead')
-		case 15: return ld2(view, offset, it, 'lol')
-		default:
-			return unknown_field;
-	}
-}
-
-
 export class Item {
-	static get TypeID() { return 13286; }
+	static get TypeID() { return 13286; }	constructor(props = {}){ Object.assign(this, props) }
+
 	toBytes() { return Item_serialize(this, new ByteBuffer()).bytes(); }
 	fromBytes(bytes) {
 		if (!('buffer' in bytes)) bytes = new Uint8Array(bytes);
@@ -74,7 +14,7 @@ function Item_serialize(it, b) {
 	write_uint16(13286, b);
 	const start_index = b.length;
 	write_uint32(0, b);
-	if (typeof it.name !== 'undefined') {
+	if(typeof it.name !== 'undefined') {
 		write_uint16(1, b);
 		write_string(it.name, b);
 	}
@@ -82,28 +22,92 @@ function Item_serialize(it, b) {
 	b.set_uint32(start_index, end_index - (start_index + 4))
 	return b;
 }
-function Item_deserialize(view, offset, struct, field) {
+
+function Item_deserialize(view, offset, struct, field){
 	const s = new Item();
 	offset = parse_struct(s, Item_deserialize_field, view, offset);
 	struct[field] = s;
 	return offset;
 }
+
 function Item_deserialize_field(it, view, fieldID, offset) {
-	switch (fieldID) {
+	switch(fieldID) {
 		case 1: return deserialize_string(view, offset, it, 'name')
 		default:
 			return unknown_field;
 	}
 }
 
+export class Player {
+	static get TypeID() { return 49920; }	constructor(props = {}){ Object.assign(this, props) }
+
+	toBytes() { return Player_serialize(this, new ByteBuffer()).bytes(); }
+	fromBytes(bytes) {
+		if (!('buffer' in bytes)) bytes = new Uint8Array(bytes);
+		parse_struct(this, Player_deserialize_field, new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), 0);
+		return this;
+	}
+}
+function Player_serialize(it, b) {
+	write_uint16(49920, b);
+	const start_index = b.length;
+	write_uint32(0, b);
+	if(typeof it.inventory !== 'undefined') {
+		write_uint16(12, b);
+		lw1(it.inventory, b)
+	}
+	if(typeof it.foo !== 'undefined') {
+		write_uint16(13, b);
+		write_string(it.foo, b);
+	}
+	if(typeof it.dead !== 'undefined') {
+		write_uint16(14, b);
+		write_bool(it.dead, b);
+	}
+	if(typeof it.lol !== 'undefined') {
+		write_uint16(15, b);
+		lw2(it.lol, b)
+	}
+	if(typeof it.id !== 'undefined') {
+		write_uint16(10, b);
+		write_uint32(it.id, b);
+	}
+	if(typeof it.name !== 'undefined') {
+		write_uint16(11, b);
+		write_string(it.name, b);
+	}
+	const end_index = b.length;
+	b.set_uint32(start_index, end_index - (start_index + 4))
+	return b;
+}
+
+function Player_deserialize(view, offset, struct, field){
+	const s = new Player();
+	offset = parse_struct(s, Player_deserialize_field, view, offset);
+	struct[field] = s;
+	return offset;
+}
+
+function Player_deserialize_field(it, view, fieldID, offset) {
+	switch(fieldID) {
+		case 12: return ld1(view, offset, it, 'inventory')
+		case 13: return deserialize_string(view, offset, it, 'foo')
+		case 14: return deserialize_bool(view, offset, it, 'dead')
+		case 15: return ld2(view, offset, it, 'lol')
+		case 10: return deserialize_uint32(view, offset, it, 'id')
+		case 11: return deserialize_string(view, offset, it, 'name')
+		default:
+			return unknown_field;
+	}
+}
 
 export function deserialize(bytes) {
 	if (!('buffer' in bytes)) bytes = new Uint8Array(bytes);
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	const typeID = view.getUint16(0);
-	switch (typeID) {
-		case 49920: return new Player().fromBytes(bytes);
+	switch(typeID) {
 		case 13286: return new Item().fromBytes(bytes);
+		case 49920: return new Player().fromBytes(bytes);
 		default: throw new Error(`Unknown TypeID: ${typeID}`);
 	}
 }
@@ -113,8 +117,8 @@ const lw2 = make_list_writer(make_list_writer(write_uint32));
 const ld1 = make_list_deserializer(Item_deserialize);
 const ld2 = make_list_deserializer(make_list_deserializer(deserialize_uint32));
 
-
 let tmp;
+
 class ByteBuffer {
 	get length() { return this.len; }
 	encoder = new TextEncoder();
@@ -214,9 +218,8 @@ function write_string(value, b) {
 		return;
 	}
 	const lengthPos = b.length;
-	write_uint32(0, b); // reserve space for length
+	write_uint32(0, b);
 	const start = b.length;
-	// If the string is empty avoid unnecessary allocations by writing the zero length and returning.
 	if (stringLength === 0) {
 		return;
 	}
@@ -230,7 +233,6 @@ function write_string(value, b) {
 			const b2 = value.charCodeAt(++i);  // Renamed to avoid shadowing
 			codePoint = (a << 10) + b2 + (0x10000 - (0xD800 << 10) - 0xDC00);
 		}
-		// encode UTF-8
 		if (codePoint < 0x80) {
 			write_uint8(codePoint, b);
 		} else {
@@ -248,7 +250,7 @@ function write_string(value, b) {
 			write_uint8((codePoint & 0x3F) | 0x80, b);
 		}
 	}
-	b.set_uint32(lengthPos, b.length - start);  // Write to the reserved position
+	b.set_uint32(lengthPos, b.length - start);
 }
 
 function make_list_writer(s) {
@@ -377,3 +379,4 @@ function parse_struct(struct, field_method, view, offset) {
 }
 
 const unknown_field = new Error("Unknown Field")
+

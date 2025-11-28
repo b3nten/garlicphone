@@ -133,13 +133,14 @@ local function print_static_deserializer(struct)
 	}
 	out = out .. "\n\tstruct[field] = s;"
 	out = out .. "\n\treturn offset;"
-	out = out .. "}\n"
+	out = out .. "\n}\n"
 	return out
 end
 
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % { name = to_pascal_case(struct.name) }
 	out = out .. "\tstatic get TypeID() { return ${typeid}; }" % { typeid = struct.id }
+	out = out .. "\tconstructor(props = {}){ Object.assign(this, props) }\n"
 	out = out .. "\n\ttoBytes() { return ${sname}_serialize(this, new ByteBuffer()).bytes(); }" % {
 		sname = to_pascal_case(struct.name)
 	}
@@ -151,10 +152,10 @@ local function print_struct(struct)
 	out = out .. "\t\treturn this;\n"
 	out = out .. "\t}\n"
 	out = out .. "}\n"
-	out = out .. print_struct_serializer(struct)
-	out = out .. print_static_deserializer(struct)
-	out = out .. print_deserializer_switch(struct)
-	return out .. "\n\n"
+	out = out .. print_struct_serializer(struct) .. "\n"
+	out = out .. print_static_deserializer(struct) .. "\n"
+	out = out .. print_deserializer_switch(struct) .. "\n"
+	return out
 end
 
 local function print_deserialize(structs)
@@ -204,6 +205,7 @@ local function print_ts_defs(structs)
 				type = print_ts_type(field.type)
 			}
 		end
+		out = out .. "\tconstructor(props?: Omit<Partial<${sname}>, 'fromBytes' | 'toBytes'>);" % { sname = to_pascal_case(struct.name) }
 		out = out .. "\n\tstatic readonly TypeID: number;\n"
 		out = out .. "\ttoBytes(): Uint8Array;\n"
 		out = out ..
@@ -250,8 +252,8 @@ local ts_file = print_prelude(Schema.name, Schema.version) .. print_ts_defs(Sche
 
 -- APPEND INCLDUES AND SET js_file
 local include = [[
-
 let tmp;
+
 class ByteBuffer {
 	get length() { return this.len; }
 	encoder = new TextEncoder();
@@ -351,9 +353,8 @@ function write_string(value, b) {
 		return;
 	}
 	const lengthPos = b.length;
-	write_uint32(0, b); // reserve space for length
+	write_uint32(0, b);
 	const start = b.length;
-	// If the string is empty avoid unnecessary allocations by writing the zero length and returning.
 	if (stringLength === 0) {
 		return;
 	}
@@ -367,7 +368,6 @@ function write_string(value, b) {
 			const b2 = value.charCodeAt(++i);  // Renamed to avoid shadowing
 			codePoint = (a << 10) + b2 + (0x10000 - (0xD800 << 10) - 0xDC00);
 		}
-		// encode UTF-8
 		if (codePoint < 0x80) {
 			write_uint8(codePoint, b);
 		} else {
@@ -385,7 +385,7 @@ function write_string(value, b) {
 			write_uint8((codePoint & 0x3F) | 0x80, b);
 		}
 	}
-	b.set_uint32(lengthPos, b.length - start);  // Write to the reserved position
+	b.set_uint32(lengthPos, b.length - start);
 }
 
 function make_list_writer(s) {

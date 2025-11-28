@@ -31,26 +31,18 @@ func (it *Item) fromBytes(data []byte, fieldIndex uint16, offset int) (int, erro
 }
 
 type Player struct { 
-	 Dead *bool
-	 Lol *[][]uint32
 	 Id *uint32
 	 Name *string
 	 Inventory *[]Item
 	 Foo *string
+	 Dead *bool
+	 Lol *[][]uint32
 }
 func (Player) TypeID() uint16 { return uint16(49920) }
 func (it Player) toBytes(data *bytes.Buffer) {
 	serializeUint16(49920, data)
 	startLenPos := data.Len()
 	serializeUint32(0, data)
-	if it.Dead != nil {
-		serializeUint16(14, data)
-		serializeBool(*it.Dead, data)
-	}
-	if it.Lol != nil {
-		serializeUint16(15, data)
-		newListSerializer[[]uint32](newListSerializer[uint32](serializeUint32))(*it.Lol, data)
-	}
 	if it.Id != nil {
 		serializeUint16(10, data)
 		serializeUint32(*it.Id, data)
@@ -67,16 +59,24 @@ func (it Player) toBytes(data *bytes.Buffer) {
 		serializeUint16(13, data)
 		serializeString(*it.Foo, data)
 	}
+	if it.Dead != nil {
+		serializeUint16(14, data)
+		serializeBool(*it.Dead, data)
+	}
+	if it.Lol != nil {
+		serializeUint16(15, data)
+		newListSerializer[[]uint32](newListSerializer[uint32](serializeUint32))(*it.Lol, data)
+	}
 	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
 }
 func (it *Player) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
 	switch fieldIndex {
-	case 0: val, len, err := deserializeBool(data, offset); it.Dead = &val; return len, err
-	case 1: val, len, err := newListDeserializer[[]uint32](newListDeserializer[uint32](deserializeUint32))(data, offset); it.Lol = &val; return len, err
-	case 2: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
-	case 3: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
-	case 4: val, len, err := newListDeserializer[Item](deserializeStruct[Item])(data, offset); it.Inventory = &val; return len, err
-	case 5: val, len, err := deserializeString(data, offset); it.Foo = &val; return len, err
+	case 0: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
+	case 1: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
+	case 2: val, len, err := newListDeserializer[Item](deserializeStruct[Item])(data, offset); it.Inventory = &val; return len, err
+	case 3: val, len, err := deserializeString(data, offset); it.Foo = &val; return len, err
+	case 4: val, len, err := deserializeBool(data, offset); it.Dead = &val; return len, err
+	case 5: val, len, err := newListDeserializer[[]uint32](newListDeserializer[uint32](deserializeUint32))(data, offset); it.Lol = &val; return len, err
 	}
 	return 0, UnknownFieldError
 }
