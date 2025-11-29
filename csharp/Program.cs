@@ -19,3 +19,13 @@ var bytes = player.Serialize();
 
 // write to file
 File.WriteAllBytes("player.dat", bytes);
+
+// read from file
+var readBytes = File.ReadAllBytes("player.dat");
+var deserializedPlayer = new Player().Deserialize(readBytes);
+Console.WriteLine($"Player Name: {deserializedPlayer.Name}");
+Console.WriteLine($"Player Inventory Item Name: {deserializedPlayer.Inventory?[0].Name}");
+Console.WriteLine($"Player Foo: {deserializedPlayer.Foo}");
+Console.WriteLine($"Player Lol: {string.Join(", ", deserializedPlayer.Lol?[0] ?? Array.Empty<uint>())}");
+Console.WriteLine($"Player Lol2 Item Name: {deserializedPlayer.Lol2?[0]?[0]?[0].Name}");
+Console.WriteLine($"Player Dead: {deserializedPlayer.Dead}");

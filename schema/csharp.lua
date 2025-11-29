@@ -61,17 +61,18 @@ local function print_field_serialization(name, field)
 			} [[
 				var bytes = System.Text.Encoding.UTF8.GetBytes(${fname});
 				w.Write((uint)bytes.Length);
-				w.Write(bytes);]]
+				w.Write(bytes);
+			]]
 		end
 		return str_block {
 			fname = name,
 			uses_value = uses_value[field.type.name] and not field.index and ".Value" or "",
-		} [[ w.Write(${fname}${uses_value}); ]]
+		}("w.Write(${fname}${uses_value});")
 	elseif field.type.kind == "struct" then
 		return str_block {
 			fname = name,
 			ftype = pascal_case(field.type.name),
-		} [[ _${ftype}.Serialize(${fname}, w); ]]
+		}("_${ftype}.Serialize(${fname}, w);")
 	elseif field.type.kind == "list" then
 		local of_type = field.type.of
 		local index = field.index or 0
@@ -148,7 +149,7 @@ local function print_field_deserialization(name, field)
 		return str_block {
 			fname = name,
 			ftype = ctype_to_reader[field.type.name],
-		} [[ ${fname} = r.${ftype}(); ]]
+		}("${fname} = r.${ftype}();")
 	elseif field.type.kind == "struct" then
 		return str_block {
 			fname = name,
@@ -293,10 +294,11 @@ local function print_struct(struct_name, struct)
 				}
 			}
 		}
+
 		file class _${sname}
 		{
-		${ser_fn}
-		${deser_fn}
+			${ser_fn}
+			${deser_fn}
 		}
 	]]
 end
@@ -316,11 +318,11 @@ interface I${name}<TSelf> where TSelf : I${name}<TSelf>
 	public byte[] Serialize();
 	public TSelf Deserialize(byte[] data);
 }
-]] .. "\n"
+]]
 
 
 for struct_name, struct in pairs(Schema.structs) do
-	file = file .. print_struct(struct_name, struct) .. "\n"
+	file = file .. print_struct(struct_name, struct)
 end
 
 -- WRITE OUTPUT
