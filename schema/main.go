@@ -15,6 +15,8 @@ import (
 
 //go:embed js.lua
 var jsTemplater string
+//go:embed csharp.lua
+var csharpTemplater string
 
 type SchemaFile struct {
 	schema *parser.Schema
@@ -75,6 +77,7 @@ func main() {
 	switch strings.ToLower(*langFlag) {
 	case "go": err = generateGoCode(file)
 	case "js": err = generateJSCode(file)
+	case "c#": err = generateCSharpCode(file)
 	default:
 		templater, err := os.ReadFile(*langFlag)
 		if err != nil {
@@ -89,7 +92,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 6. Create output directory if it doesn't exist
 	if err := os.MkdirAll(*outputFlag, 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory '%s': %v\n", *outputFlag, err)
 		os.Exit(1)
@@ -121,17 +123,26 @@ func generateJSCode(file *SchemaFile) error {
 	return generateWithLuaTemplate(file, jsTemplater)
 }
 
+func generateCSharpCode(file *SchemaFile) error {
+	return generateWithLuaTemplate(file, csharpTemplater)
+}
+
 func generateWithLuaTemplate(file *SchemaFile, templater string) error {
 	L := parser.CreateLuaState(file.schema)
 	defer L.Close()
 	if err := L.DoString(templater); err != nil {
-		return err
+		panic(err)
 	}
 	result := L.GetGlobal("Output")
 	if tbl, ok := result.(*lua.LTable); ok {
 		tbl.ForEach(func(key lua.LValue, value lua.LValue) {
 			file.generated[key.String()] = value.String()
 		})
+	} else {
+	  panic("Output is not a table")
+	}
+	if len(file.generated) == 0 {
+		return fmt.Errorf("No output generated from Lua template")
 	}
 	return nil
 }

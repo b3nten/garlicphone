@@ -102,7 +102,7 @@ func deserializeString(data []byte, offset int) (string, int, error) {
 	if len(slice) < 4 {
 		return "", 0, fmt.Errorf("insufficient data for string length")
 	}
-	strLen := int(binary.BigEndian.Uint32(slice))
+	strLen := int(binary.LittleEndian.Uint32(slice))
 	if strLen == 0 {
 		return "", 4, nil
 	}
@@ -119,7 +119,7 @@ func newListDeserializer[K any](elemDeserializer deserializer[K]) deserializer[[
 		if len(slice) < 4 {
 			return nil, 0, fmt.Errorf("insufficient data for list length")
 		}
-		listLen := int(binary.BigEndian.Uint32(slice))
+		listLen := int(binary.LittleEndian.Uint32(slice))
 		i := 4
 		value = make([]K, 0)
 		for i < listLen+4 {
@@ -154,28 +154,28 @@ func serializeUint8(value uint8, b *bytes.Buffer) int {
 }
 
 func serializeInt16(value int16, b *bytes.Buffer) int {
-	binary.Write(b, binary.BigEndian, value)
+	binary.Write(b, binary.LittleEndian, value)
 	return 2
 }
 
 func serializeUint16(value uint16, b *bytes.Buffer) int {
-	binary.Write(b, binary.BigEndian, value)
+	binary.Write(b, binary.LittleEndian, value)
 	return 2
 }
 
 func serializeInt32(value int32, b *bytes.Buffer) int {
-	binary.Write(b, binary.BigEndian, value)
+	binary.Write(b, binary.LittleEndian, value)
 	return 4
 }
 
 func serializeUint32(value uint32, b *bytes.Buffer) int {
-	binary.Write(b, binary.BigEndian, value)
+	binary.Write(b, binary.LittleEndian, value)
 	return 4
 }
 
 func serializeString(value string, b *bytes.Buffer) int {
 	strLen := uint32(len(value))
-	binary.Write(b, binary.BigEndian, strLen)
+	binary.Write(b, binary.LittleEndian, strLen)
 	b.WriteString(value)
 	return 4 + len(value)
 }
@@ -193,7 +193,7 @@ func newListSerializer[K any](elemSerializer serializer[K]) serializer[[]K] {
 		for _, item := range value {
 			elemSerializer(item, b)
 		}
-		binary.BigEndian.PutUint32(b.Bytes()[i-lenSize:], uint32(len(b.Bytes())-i))
+		binary.LittleEndian.PutUint32(b.Bytes()[i-lenSize:], uint32(len(b.Bytes())-i))
 		return len(b.Bytes()) - i + lenSize
 	}
 }
@@ -202,7 +202,7 @@ func parse(parser func(data []byte, fieldIndex uint16, offset int) (int, error),
 	if len(bytes) < idSize+lenSize {
 		return 0, fmt.Errorf("data too short: need at least 6 bytes for id and length")
 	}
-	dataSize := binary.BigEndian.Uint32(bytes[idSize:])
+	dataSize := binary.LittleEndian.Uint32(bytes[idSize:])
 	totalSize := int(dataSize) + idSize + lenSize
 	if len(bytes) < totalSize {
 		return 0, fmt.Errorf("data too short: expected %d bytes, got %d", totalSize, len(bytes))
@@ -230,5 +230,5 @@ func getField(b []byte) (uint16, error) {
 	if len(b) < 2 {
 		return 0, fmt.Errorf("insufficient data for field index")
 	}
-	return binary.BigEndian.Uint16(b), nil
+	return binary.LittleEndian.Uint16(b), nil
 }

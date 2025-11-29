@@ -140,7 +140,7 @@ end
 local function print_struct(struct)
 	local out = "export class ${name} {\n" % { name = to_pascal_case(struct.name) }
 	out = out .. "\tstatic get TypeID() { return ${typeid}; }" % { typeid = struct.id }
-	out = out .. "\tconstructor(props = {}){ Object.assign(this, props) }\n"
+	out = out .. "\n\tconstructor(props = {}){ Object.assign(this, props) }"
 	out = out .. "\n\ttoBytes() { return ${sname}_serialize(this, new ByteBuffer()).bytes(); }" % {
 		sname = to_pascal_case(struct.name)
 	}
@@ -163,7 +163,7 @@ local function print_deserialize(structs)
 	out = out .. "export function deserialize(bytes) {"
 	out = out .. "\n\tif (!('buffer' in bytes)) bytes = new Uint8Array(bytes);"
 	out = out .. "\n\tconst view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);"
-	out = out .. "\n\tconst typeID = view.getUint16(0);"
+	out = out .. "\n\tconst typeID = view.getUint16(0, true);"
 	out = out .. "\n\tswitch(typeID) {"
 	for _, v in pairs(structs) do
 		out = out .. "\n\t\tcase ${typeid}: return new ${sname}().fromBytes(bytes);" % {
@@ -270,17 +270,17 @@ class ByteBuffer {
 
 	set_uint8(offset, value) {
 		this.resize(offset + 1);
-		this.dview.setUint8(offset, value);
+		this.dview.setUint8(offset, value, true);
 	}
 
 	set_uint16(offset, value) {
 		this.resize(offset + 2);
-		this.dview.setUint16(offset, value);
+		this.dview.setUint16(offset, value, true);
 	}
 
 	set_uint32(offset, value) {
 		this.resize(offset + 4);
-		this.dview.setUint32(offset, value);
+		this.dview.setUint32(offset, value, true);
 	}
 
 	bytes() {
@@ -305,43 +305,43 @@ class ByteBuffer {
 function write_bool(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 1);
-	b.dview.setUint8(tmp, value ? 1 : 0);
+	b.dview.setUint8(tmp, value ? 1 : 0, true);
 }
 
 function write_int8(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 1);
-	b.dview.setInt8(tmp, value);
+	b.dview.setInt8(tmp, value, true);
 }
 
 function write_uint8(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 1);
-	b.dview.setUint8(tmp, value);
+	b.dview.setUint8(tmp, value, true);
 }
 
 function write_int16(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 2);
-	b.dview.setInt16(tmp, value);
+	b.dview.setInt16(tmp, value, true);
 }
 
 function write_uint16(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 2);
-	b.dview.setUint16(tmp, value);
+	b.dview.setUint16(tmp, value, true);
 }
 
 function write_int32(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 4);
-	b.dview.setInt32(tmp, value);
+	b.dview.setInt32(tmp, value, true);
 }
 
 function write_uint32(value, b) {
 	tmp = b.length;
 	b.resize(b.len + 4);
-	b.dview.setUint32(tmp, value);
+	b.dview.setUint32(tmp, value, true);
 }
 
 function write_string(value, b) {
@@ -398,43 +398,43 @@ function make_list_writer(s) {
 }
 
 function deserialize_bool(view, offset, struct, field) {
-	struct[field] = view.getUint8(offset) !== 0;
+	struct[field] = view.getUint8(offset, true) !== 0;
 	return offset + 1;
 }
 
 function deserialize_int8(data, offset, struct, field) {
-	struct[field] = data.getInt8(offset);
+	struct[field] = data.getInt8(offset, true);
 	return offset + 1;
 }
 
 function deserialize_uint8(data, offset, struct, field) {
-	struct[field] = data.getUint8(offset);
+	struct[field] = data.getUint8(offset, true);
 	return offset + 1;
 }
 
 function deserialize_int16(data, offset, struct, field) {
-	struct[field] = data.getInt16(offset);
+	struct[field] = data.getInt16(offset, true);
 	return offset + 2;
 }
 
 function deserialize_uint16(data, offset, struct, field) {
-	struct[field] = data.getUint16(offset);
+	struct[field] = data.getUint16(offset, true);
 	return offset + 2;
 }
 
 function deserialize_int32(data, offset, struct, field) {
-	struct[field] = data.getInt32(offset);
+	struct[field] = data.getInt32(offset, true);
 	return offset + 4;
 }
 
 function deserialize_uint32(data, offset, struct, field) {
-	struct[field] = data.getUint32(offset);
+	struct[field] = data.getUint32(offset, true);
 	return offset + 4;
 }
 
 const text_decoder = new TextDecoder();
 function deserialize_string(data, offset, struct, field) {
-	const length = data.getUint32(offset);
+	const length = data.getUint32(offset, true);
 	offset += 4;
 	if (length > 300) {
 		const bytes = new Uint8Array(data.buffer, data.byteOffset + offset, length);
@@ -477,7 +477,7 @@ function deserialize_string(data, offset, struct, field) {
 
 function make_list_deserializer(item_deserializer) {
 	return (data, offset, struct, field) => {
-		const length = data.getUint32(offset);
+		const length = data.getUint32(offset, true);
 		offset += 4;
 		const endOffset = offset + length;
 		const list = [];
@@ -492,17 +492,17 @@ function make_list_deserializer(item_deserializer) {
 }
 
 function parse_struct(struct, field_method, view, offset) {
-	const typeID = view.getUint16(offset);
+	const typeID = view.getUint16(offset, true);
 	offset += 2;
 	if (typeID !== struct.constructor.TypeID) {
 		throw new Error(`Type Mismatch: Expected ${struct.constructor.TypeID} got ${typeID} for ${struct.constructor.name}`);
 	}
-	const length = view.getUint32(offset);
+	const length = view.getUint32(offset, true);
 	const totalSize = length + 6;
 	offset += 4;
 	const endOffset = offset + length;
 	while (offset < endOffset) {
-		const fieldID = view.getUint16(offset);
+		const fieldID = view.getUint16(offset, true);
 		offset += 2;
 		const next = field_method(struct, view, fieldID, offset)
 		if (next === unknown_field) {

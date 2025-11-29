@@ -1,0 +1,15 @@
+/Users/benton/dev/garlicphone/csharp/bin/Debug/net10.0/csharp
+/Users/benton/dev/garlicphone/csharp/bin/Debug/net10.0/csharp.deps.json
+/Users/benton/dev/garlicphone/csharp/bin/Debug/net10.0/csharp.runtimeconfig.json
+/Users/benton/dev/garlicphone/csharp/bin/Debug/net10.0/csharp.dll
+/Users/benton/dev/garlicphone/csharp/bin/Debug/net10.0/csharp.pdb
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.GeneratedMSBuildEditorConfig.editorconfig
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.AssemblyInfoInputs.cache
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.AssemblyInfo.cs
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.csproj.CoreCompileInputs.cache
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.sourcelink.json
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.dll
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/refint/csharp.dll
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.pdb
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/csharp.genruntimeconfig.cache
+/Users/benton/dev/garlicphone/csharp/obj/Debug/net10.0/ref/csharp.dll

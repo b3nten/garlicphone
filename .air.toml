@@ -25,7 +25,8 @@ tmp_dir = "tmp"
   post_cmd = []
   pre_cmd = [
   	"go run schema/*.go -i messages.sch -o messages -lang go",
-   	"go run schema/*.go -i messages.sch -o web -lang js"
+   	"go run schema/*.go -i messages.sch -o web -lang js",
+    "go run schema/*.go -i messages.sch -o csharp -lang c#"
   ]
   rerun = false
   rerun_delay = 500

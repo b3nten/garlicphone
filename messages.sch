@@ -11,4 +11,5 @@ player = struct {
 	foo = str{ id = 13 },
 	dead = bool{ id = 14 },
 	lol = list(list(uint32)){ id = 15 },
+	lol2 = list(list(list(item))){ id = 16 },
 }
