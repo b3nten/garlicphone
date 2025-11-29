@@ -52,6 +52,10 @@ function Player_serialize(it, b) {
 	write_uint16(49920, b);
 	const start_index = b.length;
 	write_uint32(0, b);
+	if(typeof it.id !== 'undefined') {
+		write_uint16(10, b);
+		write_uint32(it.id, b);
+	}
 	if(typeof it.name !== 'undefined') {
 		write_uint16(11, b);
 		write_string(it.name, b);
@@ -76,10 +80,6 @@ function Player_serialize(it, b) {
 		write_uint16(16, b);
 		lw3(it.lol2, b)
 	}
-	if(typeof it.id !== 'undefined') {
-		write_uint16(10, b);
-		write_uint32(it.id, b);
-	}
 	const end_index = b.length;
 	b.set_uint32(start_index, end_index - (start_index + 4))
 	return b;
@@ -94,13 +94,13 @@ function Player_deserialize(view, offset, struct, field){
 
 function Player_deserialize_field(it, view, fieldID, offset) {
 	switch(fieldID) {
+		case 10: return deserialize_uint32(view, offset, it, 'id')
 		case 11: return deserialize_string(view, offset, it, 'name')
 		case 12: return ld1(view, offset, it, 'inventory')
 		case 13: return deserialize_string(view, offset, it, 'foo')
 		case 14: return deserialize_bool(view, offset, it, 'dead')
 		case 15: return ld2(view, offset, it, 'lol')
 		case 16: return ld3(view, offset, it, 'lol2')
-		case 10: return deserialize_uint32(view, offset, it, 'id')
 		default:
 			return unknown_field;
 	}

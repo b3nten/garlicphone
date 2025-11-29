@@ -47,7 +47,7 @@ local function cs_type(field_type)
 	elseif field_type.kind == "struct" then
 		return pascal_case(field_type.name)
 	elseif field_type.kind == "list" then
-		return cs_type(field_type.of) .. "[]"
+		return sprintf("List<${type}>", { type = cs_type(field_type.of) })
 	else
 		error("Unknown field type kind: " .. tostring(field_type.kind))
 	end
@@ -83,7 +83,7 @@ local function print_field_serialization(name, field)
 		} [[
 			var length${index} = w.BaseStream.Position;
 			w.Write((uint)0);
-			for (int i${index} = 0; i${index} < ${fname}.Length; i${index}++)
+			for (int i${index} = 0; i${index} < ${fname}.Count; i${index}++)
 			{
 				var e${index} = ${fname}[i${index}];
 				${element_serialization}
@@ -181,7 +181,7 @@ local function print_field_deserialization(name, field)
 					${des_fn}
 					list${index}.Add(e${index});
 				}
-				${name} = list${index}.ToArray();
+				${name} = list${index};
 			}
 		]]
 	end

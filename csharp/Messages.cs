@@ -94,13 +94,13 @@ file class _Item
 }
 class Player : IMessages<Player>
 {
-    public Item[]? Inventory;
-    public string? Foo;
-    public bool? Dead;
-    public uint[][]? Lol;
-    public Item[][][]? Lol2;
     public uint? Id;
     public string? Name;
+    public List<Item>? Inventory;
+    public string? Foo;
+    public bool? Dead;
+    public List<List<uint>>? Lol;
+    public List<List<List<Item>>>? Lol2;
 
     public readonly static ushort TypeId = 49920;
 
@@ -143,12 +143,24 @@ file class _Player
         w.Write(Player.TypeId);
         var lengthPos = w.BaseStream.Position;
         w.Write((UInt32)0);
+        if (it.Id != null)
+        {
+            w.Write((ushort)10);
+            w.Write(it.Id.Value);
+        }
+        if (it.Name != null)
+        {
+            w.Write((ushort)11);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(it.Name);
+            w.Write((uint)bytes.Length);
+            w.Write(bytes);
+        }
         if (it.Inventory != null)
         {
             w.Write((ushort)12);
             var length0 = w.BaseStream.Position;
             w.Write((uint)0);
-            for (int i0 = 0; i0 < it.Inventory.Length; i0++)
+            for (int i0 = 0; i0 < it.Inventory.Count; i0++)
             {
                 var e0 = it.Inventory[i0];
                 _Item.Serialize(e0, w);
@@ -175,12 +187,12 @@ file class _Player
             w.Write((ushort)15);
             var length0 = w.BaseStream.Position;
             w.Write((uint)0);
-            for (int i0 = 0; i0 < it.Lol.Length; i0++)
+            for (int i0 = 0; i0 < it.Lol.Count; i0++)
             {
                 var e0 = it.Lol[i0];
                 var length1 = w.BaseStream.Position;
                 w.Write((uint)0);
-                for (int i1 = 0; i1 < e0.Length; i1++)
+                for (int i1 = 0; i1 < e0.Count; i1++)
                 {
                     var e1 = e0[i1];
                     w.Write(e1);
@@ -200,17 +212,17 @@ file class _Player
             w.Write((ushort)16);
             var length0 = w.BaseStream.Position;
             w.Write((uint)0);
-            for (int i0 = 0; i0 < it.Lol2.Length; i0++)
+            for (int i0 = 0; i0 < it.Lol2.Count; i0++)
             {
                 var e0 = it.Lol2[i0];
                 var length1 = w.BaseStream.Position;
                 w.Write((uint)0);
-                for (int i1 = 0; i1 < e0.Length; i1++)
+                for (int i1 = 0; i1 < e0.Count; i1++)
                 {
                     var e1 = e0[i1];
                     var length2 = w.BaseStream.Position;
                     w.Write((uint)0);
-                    for (int i2 = 0; i2 < e1.Length; i2++)
+                    for (int i2 = 0; i2 < e1.Count; i2++)
                     {
                         var e2 = e1[i2];
                         _Item.Serialize(e2, w);
@@ -229,18 +241,6 @@ file class _Player
             w.Seek((int)length0, SeekOrigin.Begin);
             w.Write((uint)(end0 - length0 - 4));
             w.Seek(0, SeekOrigin.End);
-        }
-        if (it.Id != null)
-        {
-            w.Write((ushort)10);
-            w.Write(it.Id.Value);
-        }
-        if (it.Name != null)
-        {
-            w.Write((ushort)11);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(it.Name);
-            w.Write((uint)bytes.Length);
-            w.Write(bytes);
         }
         var endPos = w.BaseStream.Position;
         w.Seek((int)lengthPos, SeekOrigin.Begin);
@@ -261,6 +261,16 @@ file class _Player
             ushort fieldId = r.ReadUInt16();
             switch (fieldId)
             {
+                case 10:
+                    it.Id = r.ReadUInt32();
+                    break;
+                case 11:
+                    {
+                        uint strLen = r.ReadUInt32();
+                        var strBytes = r.ReadBytes((int)strLen);
+                        it.Name = System.Text.Encoding.UTF8.GetString(strBytes);
+                    }
+                    break;
                 case 12:
                     {
                         uint listLength0 = r.ReadUInt32();
@@ -276,7 +286,7 @@ file class _Player
                             }
                             list0.Add(e0);
                         }
-                        it.Inventory = list0.ToArray();
+                        it.Inventory = list0;
                     }
                     break;
                 case 13:
@@ -293,10 +303,10 @@ file class _Player
                     {
                         uint listLength0 = r.ReadUInt32();
                         long startPos0 = r.BaseStream.Position;
-                        var list0 = new System.Collections.Generic.List<uint[]>();
+                        var list0 = new System.Collections.Generic.List<List<uint>>();
                         while (r.BaseStream.Position - startPos0 < listLength0)
                         {
-                            uint[] e0;
+                            List<uint> e0;
                             {
                                 uint listLength1 = r.ReadUInt32();
                                 long startPos1 = r.BaseStream.Position;
@@ -307,28 +317,28 @@ file class _Player
                                     e1 = r.ReadUInt32();
                                     list1.Add(e1);
                                 }
-                                e0 = list1.ToArray();
+                                e0 = list1;
                             }
                             list0.Add(e0);
                         }
-                        it.Lol = list0.ToArray();
+                        it.Lol = list0;
                     }
                     break;
                 case 16:
                     {
                         uint listLength0 = r.ReadUInt32();
                         long startPos0 = r.BaseStream.Position;
-                        var list0 = new System.Collections.Generic.List<Item[][]>();
+                        var list0 = new System.Collections.Generic.List<List<List<Item>>>();
                         while (r.BaseStream.Position - startPos0 < listLength0)
                         {
-                            Item[][] e0;
+                            List<List<Item>> e0;
                             {
                                 uint listLength1 = r.ReadUInt32();
                                 long startPos1 = r.BaseStream.Position;
-                                var list1 = new System.Collections.Generic.List<Item[]>();
+                                var list1 = new System.Collections.Generic.List<List<Item>>();
                                 while (r.BaseStream.Position - startPos1 < listLength1)
                                 {
-                                    Item[] e1;
+                                    List<Item> e1;
                                     {
                                         uint listLength2 = r.ReadUInt32();
                                         long startPos2 = r.BaseStream.Position;
@@ -343,25 +353,15 @@ file class _Player
                                             }
                                             list2.Add(e2);
                                         }
-                                        e1 = list2.ToArray();
+                                        e1 = list2;
                                     }
                                     list1.Add(e1);
                                 }
-                                e0 = list1.ToArray();
+                                e0 = list1;
                             }
                             list0.Add(e0);
                         }
-                        it.Lol2 = list0.ToArray();
-                    }
-                    break;
-                case 10:
-                    it.Id = r.ReadUInt32();
-                    break;
-                case 11:
-                    {
-                        uint strLen = r.ReadUInt32();
-                        var strBytes = r.ReadBytes((int)strLen);
-                        it.Name = System.Text.Encoding.UTF8.GetString(strBytes);
+                        it.Lol2 = list0;
                     }
                     break;
                 default:

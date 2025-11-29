@@ -9,63 +9,6 @@ import(
 	"fmt"
 )
 
-type Player struct { 
-	 Inventory *[]Item
-	 Foo *string
-	 Dead *bool
-	 Lol *[][]uint32
-	 Lol2 *[][][]Item
-	 Id *uint32
-	 Name *string
-}
-func (Player) TypeID() uint16 { return uint16(49920) }
-func (it Player) toBytes(data *bytes.Buffer) {
-	serializeUint16(49920, data)
-	startLenPos := data.Len()
-	serializeUint32(0, data)
-	if it.Inventory != nil {
-		serializeUint16(12, data)
-		newListSerializer[Item](serializeStruct[Item])(*it.Inventory, data)
-	}
-	if it.Foo != nil {
-		serializeUint16(13, data)
-		serializeString(*it.Foo, data)
-	}
-	if it.Dead != nil {
-		serializeUint16(14, data)
-		serializeBool(*it.Dead, data)
-	}
-	if it.Lol != nil {
-		serializeUint16(15, data)
-		newListSerializer[[]uint32](newListSerializer[uint32](serializeUint32))(*it.Lol, data)
-	}
-	if it.Lol2 != nil {
-		serializeUint16(16, data)
-		newListSerializer[[][]Item](newListSerializer[[]Item](newListSerializer[Item](serializeStruct[Item])))(*it.Lol2, data)
-	}
-	if it.Id != nil {
-		serializeUint16(10, data)
-		serializeUint32(*it.Id, data)
-	}
-	if it.Name != nil {
-		serializeUint16(11, data)
-		serializeString(*it.Name, data)
-	}
-	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
-}
-func (it *Player) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
-	switch fieldIndex {
-	case 0: val, len, err := newListDeserializer[Item](deserializeStruct[Item])(data, offset); it.Inventory = &val; return len, err
-	case 1: val, len, err := deserializeString(data, offset); it.Foo = &val; return len, err
-	case 2: val, len, err := deserializeBool(data, offset); it.Dead = &val; return len, err
-	case 3: val, len, err := newListDeserializer[[]uint32](newListDeserializer[uint32](deserializeUint32))(data, offset); it.Lol = &val; return len, err
-	case 4: val, len, err := newListDeserializer[[][]Item](newListDeserializer[[]Item](newListDeserializer[Item](deserializeStruct[Item])))(data, offset); it.Lol2 = &val; return len, err
-	case 5: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
-	case 6: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
-	}
-	return 0, UnknownFieldError
-}
-
 type Item struct { 
 	 Name *string
 }
@@ -87,13 +30,70 @@ func (it *Item) fromBytes(data []byte, fieldIndex uint16, offset int) (int, erro
 	return 0, UnknownFieldError
 }
 
+type Player struct { 
+	 Lol *[][]uint32
+	 Lol2 *[][][]Item
+	 Id *uint32
+	 Name *string
+	 Inventory *[]Item
+	 Foo *string
+	 Dead *bool
+}
+func (Player) TypeID() uint16 { return uint16(49920) }
+func (it Player) toBytes(data *bytes.Buffer) {
+	serializeUint16(49920, data)
+	startLenPos := data.Len()
+	serializeUint32(0, data)
+	if it.Lol != nil {
+		serializeUint16(15, data)
+		newListSerializer[[]uint32](newListSerializer[uint32](serializeUint32))(*it.Lol, data)
+	}
+	if it.Lol2 != nil {
+		serializeUint16(16, data)
+		newListSerializer[[][]Item](newListSerializer[[]Item](newListSerializer[Item](serializeStruct[Item])))(*it.Lol2, data)
+	}
+	if it.Id != nil {
+		serializeUint16(10, data)
+		serializeUint32(*it.Id, data)
+	}
+	if it.Name != nil {
+		serializeUint16(11, data)
+		serializeString(*it.Name, data)
+	}
+	if it.Inventory != nil {
+		serializeUint16(12, data)
+		newListSerializer[Item](serializeStruct[Item])(*it.Inventory, data)
+	}
+	if it.Foo != nil {
+		serializeUint16(13, data)
+		serializeString(*it.Foo, data)
+	}
+	if it.Dead != nil {
+		serializeUint16(14, data)
+		serializeBool(*it.Dead, data)
+	}
+	binary.BigEndian.PutUint32(data.Bytes()[startLenPos:], uint32(len(data.Bytes())-(startLenPos+lenSize)))
+}
+func (it *Player) fromBytes(data []byte, fieldIndex uint16, offset int) (int, error) {
+	switch fieldIndex {
+	case 0: val, len, err := newListDeserializer[[]uint32](newListDeserializer[uint32](deserializeUint32))(data, offset); it.Lol = &val; return len, err
+	case 1: val, len, err := newListDeserializer[[][]Item](newListDeserializer[[]Item](newListDeserializer[Item](deserializeStruct[Item])))(data, offset); it.Lol2 = &val; return len, err
+	case 2: val, len, err := deserializeUint32(data, offset); it.Id = &val; return len, err
+	case 3: val, len, err := deserializeString(data, offset); it.Name = &val; return len, err
+	case 4: val, len, err := newListDeserializer[Item](deserializeStruct[Item])(data, offset); it.Inventory = &val; return len, err
+	case 5: val, len, err := deserializeString(data, offset); it.Foo = &val; return len, err
+	case 6: val, len, err := deserializeBool(data, offset); it.Dead = &val; return len, err
+	}
+	return 0, UnknownFieldError
+}
+
 func UnmarshalBinary[K any, KT interface {*K; Serializable}](b []byte, out KT) error {
 	if len(b) < idSize+lenSize { return fmt.Errorf("data too short to contain message header") }
 	typeID := uint16(binary.BigEndian.Uint16(b[0:idSize]))
 	if out.TypeID() != typeID { return fmt.Errorf("type ID mismatch: expected %d, got %d", out.TypeID(), typeID) }
 	switch v := any(out).(type) {
-	case *Player: _, err := parse(v.fromBytes, b); return err
 	case *Item: _, err := parse(v.fromBytes, b); return err
+	case *Player: _, err := parse(v.fromBytes, b); return err
 	default: return fmt.Errorf("unsupported type for deserialization")
 	}
 }
@@ -102,10 +102,10 @@ func deserializeStruct[K Serializable](data []byte, offset int) (K, int, error) 
 	var val K
 	slice := data[offset:]
 	switch v := any(val).(type) {
-	case Player:
+	case Item:
 		i, err := parse(v.fromBytes, slice)
 		return any(v).(K), i, err
-	case Item:
+	case Player:
 		i, err := parse(v.fromBytes, slice)
 		return any(v).(K), i, err
 	default:

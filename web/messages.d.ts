@@ -9,13 +9,13 @@ export class Item {
 }
 
 export class Player {
+	id?: number;
 	name?: string;
 	inventory?: Item[];
 	foo?: string;
 	dead?: boolean;
 	lol?: number[][];
 	lol2?: Item[][][];
-	id?: number;
 	constructor(props?: Omit<Partial<Player>, 'fromBytes' | 'toBytes'>);
 	static readonly TypeID: number;
 	toBytes(): Uint8Array;
